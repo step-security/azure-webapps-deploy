@@ -1,6 +1,6 @@
 var core = require("@actions/core");
 
-import { FormatType, SecretParser } from 'actions-secret-parser';
+import { DOMParser, Document } from '@xmldom/xmldom';
 import { Kudu } from 'azure-actions-appservice-rest/Kudu/azure-app-kudu-service';
 
 import RuntimeConstants from '../RuntimeConstants';
@@ -20,13 +20,13 @@ export class PublishProfile {
 
     private constructor(publishProfileContent: string) {
         try {
-            let secrets = new SecretParser(publishProfileContent, FormatType.XML);
+            let dom = PublishProfile.parseXml(publishProfileContent);
             this._creds = {
-                uri: secrets.getSecret("//publishProfile/@publishUrl", false),
-                username: secrets.getSecret("//publishProfile/@userName", true),
-                password: secrets.getSecret("//publishProfile/@userPWD", true)
+                uri: PublishProfile.getAttribute(dom, "publishUrl", false),
+                username: PublishProfile.getAttribute(dom, "userName", true),
+                password: PublishProfile.getAttribute(dom, "userPWD", true)
             };
-            this._appUrl = secrets.getSecret("//publishProfile/@destinationAppUrl", false);
+            this._appUrl = PublishProfile.getAttribute(dom, "destinationAppUrl", false);
             if(this._creds.uri.indexOf("scm") < 0) {
                 throw new Error("Publish profile does not contain kudu URL");
             }
@@ -36,6 +36,33 @@ export class PublishProfile {
             core.error("Failed to fetch credentials from Publish Profile. For more details on how to set publish profile credentials refer https://aka.ms/create-secrets-for-GitHub-workflows");
             throw error;
         }
+    }
+
+    private static parseXml(content: string): Document {
+        try {
+            return new DOMParser().parseFromString(content, 'text/xml');
+        } catch(error) {
+            throw new Error('Content is not a valid XML object');
+        }
+    }
+
+    // Equivalent of xpath string(//publishProfile/@<name>): value from the first publishProfile element that has the attribute
+    private static getAttribute(dom: Document, name: string, isSecret: boolean): string {
+        let profiles = dom.getElementsByTagName("publishProfile");
+        for(let i = 0; i < profiles.length; i++) {
+            if(profiles[i].hasAttribute(name)) {
+                let value = profiles[i].getAttribute(name);
+                if(!!value) {
+                    if(isSecret) {
+                        core.setSecret(value);
+                    }
+                    return value;
+                }
+                break;
+            }
+        }
+        core.debug("Cannot find key: //publishProfile/@" + name);
+        return "";
     }
 
     public static getPublishProfile(publishProfileContent: string) {

@@ -1,0 +1,102 @@
+# undici
+[[IgnoredVulns]]
+id = "GHSA-2m5v-pch6-74hx"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-2mjp-6q6p-2qxm"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-35p6-xmwp-9g52"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-4992-7rv2-5pvq"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-8xcm-r25x-g524"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-9fm3-97px-rjf6"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-g8m3-5g58-fq7m"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-g9mf-h72j-4rw9"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-m8rv-5g2x-5cg5"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-p88m-4jfj-68fv"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-qrxm-fqhp-jwvm"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-r53p-7pc4-xj5r"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-v3r7-h72x-cjcm"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-v9p9-hfj2-hcw8"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-vrm6-8vpv-qv8q"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-vxpw-j846-p89q"
+reason = "Not used at runtime"
+
+# @fastify/busboy
+[[IgnoredVulns]]
+id = "GHSA-gxm5-99cw-xjw9"
+reason = "Not used at runtime"
+
+[[IgnoredVulns]]
+id = "GHSA-x8mw-p69m-v3mx"
+reason = "Not used at runtime"
+
+# shelljs
+[[IgnoredVulns]]
+id = "GHSA-4rq4-32rv-6wp6"
+reason = "Vulnerable shell.exec not used"
+
+[[IgnoredVulns]]
+id = "GHSA-64g7-mvw6-v9qj"
+reason = "Vulnerable shell.exec not used"
+
+# uuid
+[[IgnoredVulns]]
+id = "GHSA-w5hq-g745-h8pq"
+reason = "Only v4() used, not affected"
+
+# fs
+[[IgnoredVulns]]
+id = "MAL-2025-21003"
+reason = "Empty npm placeholder, Node built-in fs is used"
+
+# xml2js
+[[IgnoredVulns]]
+id = "GHSA-776f-qx25-q3cc"
+reason = "Accepted risk, only parses trusted Azure API response"
+
+# deepmerge
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+reason = "Dev-only dependency"
