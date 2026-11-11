@@ -25,10 +25,10 @@
   },
   "homepage": "https://github.com/step-security/azure-webapps-deploy#readme",
   "devDependencies": {
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@vercel/ncc": "^0.45.0",
-    "jest": "^29.7.0",
+    "jest": "^30.5.2",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.3"
   },
