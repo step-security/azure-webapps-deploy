@@ -3,8 +3,12 @@ on:
     branches:
       - main
 
+permissions: {}
+
 jobs:
   build_test_job:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
     name: 'Build and test job'
     runs-on: ${{ matrix.os }}
     strategy:
@@ -12,8 +16,13 @@ jobs:
           os: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["windows-latest", "ubuntu-latest", "macos-latest"]') }}
     steps:
 
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+
     - name: 'Checking out repo code'
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: 'Validate build'
       run: |

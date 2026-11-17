@@ -1,7 +1,7 @@
 name: NPM Audit Fix Run v2.2.19
 
 on:
-  workflow_dispatch: # checkov:skip=CKV_GHA_7
+  workflow_dispatch:
     inputs:
       force:
         description: 'Use --force flag for npm audit fix?'

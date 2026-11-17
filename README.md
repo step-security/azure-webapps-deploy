@@ -12,7 +12,7 @@ You can also use this GitHub Action to deploy your customized image into an Azur
 
 For deploying container images to Kubernetes, consider using [Kubernetes deploy](https://github.com/Azure/k8s-deploy) action. This action requires that the cluster context be set earlier in the workflow by using either the [Azure/aks-set-context](https://github.com/Azure/aks-set-context/tree/releases/v1) action or the [Azure/k8s-set-context](https://github.com/Azure/k8s-set-context/tree/releases/v1) action.
 
-The definition of this GitHub Action is in [action.yml](https://github.com/step-security/azure-webapps-deploy/blob/master/action.yml). *startup-command* is applicable only for Linux apps and not for Windows apps. Currently *startup-command* is supported only for Linux apps when SPN is provided and not when publish profile is provided.
+The definition of this GitHub Action is in [action.yml](https://github.com/step-security/azure-webapps-deploy/blob/main/action.yml). *startup-command* is applicable only for Linux apps and not for Windows apps. Currently *startup-command* is supported only for Linux apps when SPN is provided and not when publish profile is provided.
 
 NOTE: you must have write permissions to the repository in question. If you're using a sample repository from Microsoft, be sure to first fork the repository to your own GitHub account.
 
@@ -36,7 +36,7 @@ NOTE: you must have write permissions to the repository in question. If you're u
   * [Setup Python](https://github.com/actions/setup-python) sets up Python environment by optionally installing a version of python and adding to PATH.
   * [Setup Java](https://github.com/actions/setup-java) sets up Java app environment optionally downloading and caching a version of java by version and adding to PATH. Downloads from [Azul's Zulu distribution](http://static.azul.com/zulu/bin/).
 
-* To build and deploy a containerized app, use [docker-login](https://github.com/Azure/docker-login) to log in to a private container registry such as [Azure Container registry](https://azure.microsoft.com/services/container-registry/).
+* To build and deploy a containerized app, use [docker-login](https://github.com/step-security/azure-docker-login) to log in to a private container registry such as [Azure Container registry](https://azure.microsoft.com/services/container-registry/).
 
 Once login is done, the next set of Actions in the workflow can perform tasks such as building, tagging and pushing containers.
   
@@ -78,10 +78,10 @@ jobs:
     - name: 'Checkout Github Action' 
       uses: actions/checkout@v7
 
-    - name: Setup Node 10.x
+    - name: Setup Node 24.x
       uses: actions/setup-node@v7
       with:
-        node-version: '10.x'
+        node-version: '24.x'
     - name: 'npm ci, build, and test'
       run: |
         npm ci
@@ -111,7 +111,7 @@ jobs:
     - name: 'Checkout Github Action'
       uses: actions/checkout@v7
 
-    - uses: azure/docker-login@v2
+    - uses: step-security/azure-docker-login@v2
       with:
         login-server: contoso.azurecr.io
         username: ${{ secrets.REGISTRY_USERNAME }}
@@ -166,7 +166,7 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - uses: azure/docker-login@v2
+    - uses: step-security/azure-docker-login@v2
       with:
         login-server: contoso.azurecr.io
         username: ${{ secrets.REGISTRY_USERNAME }}
