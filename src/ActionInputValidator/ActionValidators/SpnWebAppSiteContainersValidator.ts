@@ -1,6 +1,4 @@
 import { validateSiteContainersInputs } from "../Validations";
-
-import { IValidator } from "./IValidator";
 import { SpnLinuxWebAppValidator } from "./SpnLinuxWebAppValidator";
 import { ActionParameters } from "../../actionparameters";
 

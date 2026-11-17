@@ -100,3 +100,73 @@ reason = "Accepted risk, only parses trusted Azure API response"
 [[IgnoredVulns]]
 id = "GHSA-gcqx-w48m-w2h4"
 reason = "Dev-only dependency"
+
+# underscore
+[[IgnoredVulns]]
+id = "GHSA-qpx9-hpmf-5gmw"
+reason = "Mitigated via npm overrides forcing 1.13.8; retained for scanners that read the pre-resolution lockfile"
+
+# xmldom (pulled in by actions-secret-parser; no fix available — package abandoned)
+[[IgnoredVulns]]
+id = "GHSA-27p8-2357-5qqv"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-2v35-w6hq-6mfw"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-4w3w-2rp5-g8jm"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-5fg8-2547-mr8q"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-6gmq-8vp8-gcm6"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-6h8r-xr42-gp59"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-8344-3jmq-59r6"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-965w-775f-mr7g"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-c7q8-3ch8-vqpv"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-crh6-fp67-6883"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-f6ww-3ggp-fr8h"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-h6q6-9hqw-rwfv"
+reason = "No fix available for xmldom 0.1.x in actions-secret-parser (fix requires 0.5.0 which is a breaking major bump)"
+
+[[IgnoredVulns]]
+id = "GHSA-j759-j44w-7fr8"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-w2rr-34g9-rvrj"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-wh4c-j3r5-mjhp"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"
+
+[[IgnoredVulns]]
+id = "GHSA-x6wf-f3px-wcqx"
+reason = "No fix available for xmldom, pulled in by actions-secret-parser"

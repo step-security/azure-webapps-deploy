@@ -22,7 +22,7 @@ export class DeploymentProviderFactory {
             if (!!ActionParameters.getActionParams().blessedAppSitecontainers || !!ActionParameters.getActionParams().siteContainers) {
                 return new WebAppSiteContainersDeploymentProvider(type);
             }
-            else if(!!ActionParameters.getActionParams().images || (!!ActionParameters.getActionParams().isLinux && !!ActionParameters.getActionParams().multiContainerConfigFile)) {
+            if(!!ActionParameters.getActionParams().images || (!!ActionParameters.getActionParams().isLinux && !!ActionParameters.getActionParams().multiContainerConfigFile)) {
                 return new WebAppContainerDeploymentProvider(type);
             }
             else {
