@@ -1,21 +1,35 @@
-name: NPM Audit Fix Run - v2.2.19
+name: NPM Audit Fix Run v2.2.19
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # checkov:skip=CKV_GHA_7
     inputs:
       force:
-        description: "Use --force flag for npm audit fix?"
+        description: 'Use --force flag for npm audit fix?'
         required: true
         type: boolean
+      base_branch:
+        description: 'Specify a base branch'
+        required: false
+        default: 'v2.2.19-main'
+      node_version:
+        description: 'Node.js version to use'
+        required: false
+        default: '24'
+      script:
+        description: 'Command that bundles the action'
+        required: false
+        default: 'npm run package'
   schedule:
-    - cron: "0 0 * * 1"
+    - cron: '0 0 * * 1'
 
 jobs:
-  audit-fix-v2.2.19:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
+  audit-fix-v3-11-0:
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1 # zizmor: ignore[unpinned-uses]
     with:
       force: ${{ inputs.force || false }}
-      base_branch: v2.2.19-main
+      base_branch: ${{ inputs.base_branch || 'v2.2.19-main' }}
+      node_version: ${{ inputs.node_version || '24' }}
+      script: ${{ inputs.script || 'npm run package' }}
 
 permissions:
   contents: write

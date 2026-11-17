@@ -1,0 +1,32 @@
+name: Auto Cherry Pick
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to cherry pick"
+        required: true
+      target_branch:
+        description: "Target branch to cherry pick into"
+        required: true
+      node_version:
+        description: "Node.js version to use"
+        required: false
+        default: "24"
+      script:
+        description: "Command to build and bundle the action"
+        required: false
+        default: "npm run package"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cherry-pick:
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yml@v1
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      target_branch: ${{ inputs.target_branch }}
+      node_version: ${{ inputs.node_version || '24' }}
+      script: ${{ inputs.script || 'npm run package' }}
