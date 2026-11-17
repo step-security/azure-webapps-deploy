@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as crypto from "crypto";
-import { ActionParameters, appKindMap } from "./actionparameters";
+
+import { ActionParameters, WebAppKind, appKindMap } from "./actionparameters";
 
 import { AuthorizerFactory } from "azure-actions-webclient/AuthorizerFactory";
 import { DEPLOYMENT_PROVIDER_TYPES } from "./DeploymentProvider/Providers/BaseWebAppDeploymentProvider";
@@ -8,13 +9,10 @@ import { DeploymentProviderFactory } from './DeploymentProvider/DeploymentProvid
 import { IAuthorizer } from 'azure-actions-webclient/Authorizer/IAuthorizer';
 import { ValidatorFactory } from './ActionInputValidator/ValidatorFactory';
 import { VERSION } from './version';
-import {validateSubscription} from "./subscription";
 
 var prefix = !!process.env.AZURE_HTTP_USER_AGENT ? `${process.env.AZURE_HTTP_USER_AGENT}` : "";
 
 export async function main() {
-  await validateSubscription();
-
   let isDeploymentSuccess: boolean = true;
 
   try {
@@ -42,9 +40,10 @@ export async function main() {
 
     var deploymentProvider = DeploymentProviderFactory.getDeploymentProvider(type);
 
-    core.info("Predeployment Step Started");
+    core.debug("Predeployment Step Started");
     await deploymentProvider.PreDeploymentStep();
-    core.info("Deployment Step Started");
+
+    core.debug("Deployment Step Started");
     await deploymentProvider.DeployWebAppStep();
   }
   catch(error) {

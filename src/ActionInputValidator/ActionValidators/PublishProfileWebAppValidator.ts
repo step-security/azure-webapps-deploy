@@ -1,4 +1,4 @@
-import { containerInputsNotAllowed, siteContainersConfigNotAllowed, startupCommandNotAllowed, validateAppDetails, validatePackageInput } from "../Validations";
+import { containerInputsNotAllowed,  siteContainersConfigNotAllowed, startupCommandNotAllowed, validateAppDetails, validatePackageInput } from "../Validations";
 
 import { ActionParameters } from "../../actionparameters";
 import { IValidator } from "./IValidator";

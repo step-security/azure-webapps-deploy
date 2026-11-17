@@ -12,7 +12,7 @@ You can also use this GitHub Action to deploy your customized image into an Azur
 
 For deploying container images to Kubernetes, consider using [Kubernetes deploy](https://github.com/Azure/k8s-deploy) action. This action requires that the cluster context be set earlier in the workflow by using either the [Azure/aks-set-context](https://github.com/Azure/aks-set-context/tree/releases/v1) action or the [Azure/k8s-set-context](https://github.com/Azure/k8s-set-context/tree/releases/v1) action.
 
-The definition of this GitHub Action is in [action.yml](https://github.com/step-security/azure-webapps-deploy/blob/main/action.yml). *startup-command* is applicable only for Linux apps and not for Windows apps. Currently *startup-command* is supported only for Linux apps when SPN is provided and not when publish profile is provided.
+The definition of this GitHub Action is in [action.yml](https://github.com/step-security/azure-webapps-deploy/blob/master/action.yml). *startup-command* is applicable only for Linux apps and not for Windows apps. Currently *startup-command* is supported only for Linux apps when SPN is provided and not when publish profile is provided.
 
 NOTE: you must have write permissions to the repository in question. If you're using a sample repository from Microsoft, be sure to first fork the repository to your own GitHub account.
 
@@ -21,7 +21,7 @@ NOTE: you must have write permissions to the repository in question. If you're u
 ## Dependencies on other GitHub Actions
 
 * [Checkout](https://github.com/actions/checkout) your Git repository content into GitHub Actions agent.
-* Authenticate using [Azure Web App Publish Profile](https://github.com/projectkudu/kudu/wiki/Deployment-credentials#site-credentials-aka-publish-profile-credentials) or using the [Azure Login Action](https://github.com/step-security/azure-login). Examples of both are given later in this article.
+* Authenticate using [Azure Web App Publish Profile](https://github.com/projectkudu/kudu/wiki/Deployment-credentials#site-credentials-aka-publish-profile-credentials) or using the [Azure Login Action](https://github.com/Azure/login). Examples of both are given later in this article.
 
     The action supports using publish profile for [Azure Web Apps](https://azure.microsoft.com/services/app-service/web/) (both Windows and Linux) and [Azure Web Apps for Containers](https://azure.microsoft.com/services/app-service/containers/) (both Windows and Linux).
     
@@ -62,8 +62,6 @@ For example, if You want to deploy a Java WAR based app, You can follow the link
 | PHP        | [php.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/php-webapp-on-azure.yml)
 | DOCKER     | [docker.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/docker-webapp-container-on-azure.yml) |
 | GO     | [go.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/go-webapp-on-azure.yml) |
-| SiteContainers     | [SiteContainers.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/sitecontainers-webapp-on-azure.yml) |
-| SiteContainers with Blessed App     | [SiteContainersWithBlessed.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/blessed-sitecontainers-webapp-on-azure.yml) |
 
 ### Sample workflow to build and deploy a Node.js Web app to Azure using publish profile
 
@@ -78,12 +76,12 @@ jobs:
     steps:
     # checkout the repo
     - name: 'Checkout Github Action' 
-      uses: actions/checkout@v7
+      uses: actions/checkout@master
 
-    - name: Setup Node 24.x
-      uses: actions/setup-node@v7
+    - name: Setup Node 10.x
+      uses: actions/setup-node@v1
       with:
-        node-version: '24.x'
+        node-version: '10.x'
     - name: 'npm ci, build, and test'
       run: |
         npm ci
@@ -91,7 +89,7 @@ jobs:
         npm run test --if-present
 
     - name: 'Run Azure webapp deploy action using publish profile credentials'
-      uses: step-security/azure-webapps-deploy@v2
+      uses: azure/webapps-deploy@v2
       with:
         app-name: node-rn
         publish-profile: ${{ secrets.azureWebAppPublishProfile }}
@@ -111,7 +109,7 @@ jobs:
     steps:
     # checkout the repo
     - name: 'Checkout Github Action'
-      uses: actions/checkout@v7
+      uses: actions/checkout@master
 
     - uses: azure/docker-login@v1
       with:
@@ -123,13 +121,13 @@ jobs:
         docker build . -t contoso.azurecr.io/nodejssampleapp:${{ github.sha }}
         docker push contoso.azurecr.io/nodejssampleapp:${{ github.sha }} 
 
-    - uses: step-security/azure-webapps-deploy@v2
+    - uses: azure/webapps-deploy@v2
       with:
         app-name: 'node-rnc'
         publish-profile: ${{ secrets.azureWebAppPublishProfile }}
         images: 'contoso.azurecr.io/nodejssampleapp:${{ github.sha }}'
 ```
-Webapps deploy Actions is supported for the Azure public cloud as well as Azure government clouds ('AzureUSGovernment' or 'AzureChinaCloud') and Azure Stack ('AzureStack') Hub. Before running this action, login to the respective Azure Cloud  using [Azure Login](https://github.com/step-security/azure-login) by setting appropriate value for the `environment` parameter.
+Webapps deploy Actions is supported for the Azure public cloud as well as Azure government clouds ('AzureUSGovernment' or 'AzureChinaCloud') and Azure Stack ('AzureStack') Hub. Before running this action, login to the respective Azure Cloud  using [Azure Login](https://github.com/Azure/login) by setting appropriate value for the `environment` parameter.
 
 #### Configure deployment credentials:
 
@@ -148,7 +146,7 @@ Follow the steps to configure the secret:
 
 ### Sample workflow to build and deploy a Node.js app to Containerized WebApp using Azure service principal
 
-Use [Azure Login](https://github.com/step-security/azure-login) with a service principal that's authorized for Web app deployment. Once login is done, the next set of Azure actions in the workflow can re-use the same session within the job.
+Use [Azure Login](https://github.com/Azure/login) with a service principal that's authorized for Web app deployment. Once login is done, the next set of Azure actions in the workflow can re-use the same session within the job.
 
 ```yaml
 on: [push]
@@ -161,10 +159,10 @@ jobs:
     steps:
     # checkout the repo
     - name: 'Checkout Github Action'
-      uses: actions/checkout@v7
+      uses: actions/checkout@master
 
     - name: 'Login via Azure CLI'
-      uses: step-security/azure-login@v3
+      uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
@@ -178,7 +176,7 @@ jobs:
         docker build . -t contoso.azurecr.io/nodejssampleapp:${{ github.sha }}
         docker push contoso.azurecr.io/nodejssampleapp:${{ github.sha }} 
 
-    - uses: step-security/azure-webapps-deploy@v2
+    - uses: azure/webapps-deploy@v2
       with:
         app-name: 'node-rnc'
         images: 'contoso.azurecr.io/nodejssampleapp:${{ github.sha }}'
@@ -270,3 +268,11 @@ This sample assumes the `node-rnc` web application has been previously configure
              }
          ]
 ```
+
+# Contributing
+
+This project welcomes contributions and suggestions.  Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+
+When you submit a pull request, a CLA bot will automatically determine whether you need to provide a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions provided by the bot. You will only need to do this once across all repos using our CLA.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.

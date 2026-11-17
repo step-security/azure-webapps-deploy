@@ -37,12 +37,6 @@ export class ActionParameters {
     private _isLinux: boolean;
     private _commitMessage: string;
 
-    // Used only for OneDeploy
-    private _type: string;
-    private _targetPath: string;
-    private _clean: string;
-    private _restart: string;
-
     // Used for Sitecontainers app.
     private _siteContainers: SiteContainer[];
     private _blessedAppSitecontainers: boolean;
@@ -61,12 +55,6 @@ export class ActionParameters {
          */
         this._commitMessage = github.context.eventName === 'push' ? github.context.payload.head_commit.message.slice(0, 1000) : "";
         this._endpoint = endpoint;
-
-        // Used only for OneDeploy
-        this._type = core.getInput('type');
-        this._targetPath = core.getInput('target-path');
-        this._clean = core.getInput('clean');
-        this._restart = core.getInput('restart');
 
         // Used for Sitecontainers app.
         const siteContainersConfigInput = core.getInput('sitecontainers-config');
@@ -169,26 +157,6 @@ export class ActionParameters {
 
     public get multiContainerConfigFile() {
         return this._multiContainerConfigFile;
-    }
-
-    public get type() {
-        return this._type;
-    }
-
-    public set type(type:string) {
-        this._type = type;
-    }
-
-    public get targetPath() {
-        return this._targetPath;
-    }
-
-    public get clean() {
-        return this._clean;
-    }
-
-    public get restart() {
-        return this._restart;
     }
 
     public get siteContainers(): SiteContainer[] {
