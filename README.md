@@ -36,7 +36,7 @@ NOTE: you must have write permissions to the repository in question. If you're u
   * [Setup Python](https://github.com/actions/setup-python) sets up Python environment by optionally installing a version of python and adding to PATH.
   * [Setup Java](https://github.com/actions/setup-java) sets up Java app environment optionally downloading and caching a version of java by version and adding to PATH. Downloads from [Azul's Zulu distribution](http://static.azul.com/zulu/bin/).
 
-* To build and deploy a containerized app, use [docker-login](https://github.com/Azure/docker-login) to log in to a private container registry such as [Azure Container registry](https://azure.microsoft.com/services/container-registry/).
+* To build and deploy a containerized app, use [docker-login](https://github.com/step-security/azure-docker-login) to log in to a private container registry such as [Azure Container registry](https://azure.microsoft.com/services/container-registry/).
 
 Once login is done, the next set of Actions in the workflow can perform tasks such as building, tagging and pushing containers.
   
@@ -62,8 +62,6 @@ For example, if You want to deploy a Java WAR based app, You can follow the link
 | PHP        | [php.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/php-webapp-on-azure.yml)
 | DOCKER     | [docker.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/docker-webapp-container-on-azure.yml) |
 | GO     | [go.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/go-webapp-on-azure.yml) |
-| SiteContainers     | [SiteContainers.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/sitecontainers-webapp-on-azure.yml) |
-| SiteContainers with Blessed App     | [SiteContainersWithBlessed.yml](https://github.com/Azure/actions-workflow-samples/blob/master/AppService/blessed-sitecontainers-webapp-on-azure.yml) |
 
 ### Sample workflow to build and deploy a Node.js Web app to Azure using publish profile
 
@@ -113,7 +111,7 @@ jobs:
     - name: 'Checkout Github Action'
       uses: actions/checkout@v7
 
-    - uses: azure/docker-login@v1
+    - uses: step-security/azure-docker-login@v2
       with:
         login-server: contoso.azurecr.io
         username: ${{ secrets.REGISTRY_USERNAME }}
@@ -168,7 +166,7 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - uses: azure/docker-login@v1
+    - uses: step-security/azure-docker-login@v2
       with:
         login-server: contoso.azurecr.io
         username: ${{ secrets.REGISTRY_USERNAME }}
@@ -270,3 +268,4 @@ This sample assumes the `node-rnc` web application has been previously configure
              }
          ]
 ```
+

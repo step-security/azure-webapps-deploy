@@ -7,18 +7,18 @@ export class WebAppSiteContainersDeploymentProvider extends WebAppDeploymentProv
     public async DeployWebAppStep() {
 
         if(!!this.actionParams.blessedAppSitecontainers){
-            core.info("Blessed site containers detected, using WebAppDeploymentProvider for deployment.");
+            core.debug("Blessed site containers detected, using WebAppDeploymentProvider for deployment.");
             await super.DeployWebAppStep();
         }
 
         let siteContainerDeploymentUtility = new SiteContainerDeploymentUtility(this.appService);
         let siteContainers = this.actionParams.siteContainers;
 
-        core.info("Updating site containers");
+        core.debug("Updating site containers");
 
         for (let i = 0; i < siteContainers.length; i++) {
-            let siteContainer = siteContainers[i];
-            core.info("updating site container: " + siteContainer.getName());
+            let siteContainer = siteContainers[i];            
+            core.debug("updating site container: " + siteContainer.getName());
             await siteContainerDeploymentUtility.updateSiteContainer(siteContainer);
         }
     }

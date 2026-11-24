@@ -23,16 +23,14 @@ export class ValidatorFactory {
         if(type === DEPLOYMENT_PROVIDER_TYPES.PUBLISHPROFILE) {
             if (!!actionParams.blessedAppSitecontainers || !!actionParams.siteContainers) {
                 return new PublishProfileWebAppSiteContainersValidator();
-            } 
-            else if (!!actionParams.images) {
+            } if (!!actionParams.images) {
                 await this.setResourceDetails(actionParams);
                 return new PublishProfileContainerWebAppValidator();
             }
             else {
                 try {
                     await this.setResourceDetails(actionParams);
-                }
-                catch (error) {
+                } catch (error) {
                     core.warning(`Failed to set resource details: ${error.message}`);
                 }
                 return new PublishProfileWebAppValidator();
@@ -44,21 +42,20 @@ export class ValidatorFactory {
             await this.getResourceDetails(actionParams);
             if (!!actionParams.isLinux) {
                 if (!!actionParams.siteContainers) {
+                    
                     await this.setBlessedSitecontainerApp(actionParams);
+                    
                     return new SpnWebAppSiteContainersValidator();
-                }
-                else if (!!actionParams.images || !!actionParams.multiContainerConfigFile) {
+                } else if (!!actionParams.images || !!actionParams.multiContainerConfigFile) {
                     return new SpnLinuxContainerWebAppValidator();
-                }
-                else {
+                } else {
                     return new SpnLinuxWebAppValidator();
                 }
             }
             else {
                 if (!!actionParams.images) {
                     return new SpnWindowsContainerWebAppValidator();
-                }
-                else {
+                } else {
                     return new SpnWindowsWebAppValidator();
                 }
             }
