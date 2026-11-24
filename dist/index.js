@@ -39646,11 +39646,7 @@ exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHand
 /* eslint-disable @typescript-eslint/no-explicit-any */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -39663,7 +39659,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -39682,7 +39678,6 @@ const http = __importStar(__nccwpck_require__(58611));
 const https = __importStar(__nccwpck_require__(65692));
 const pm = __importStar(__nccwpck_require__(94490));
 const tunnel = __importStar(__nccwpck_require__(20770));
-const undici_1 = __nccwpck_require__(46752);
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -39712,16 +39707,16 @@ var HttpCodes;
     HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
     HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
     HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
-})(HttpCodes || (exports.HttpCodes = HttpCodes = {}));
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
 var Headers;
 (function (Headers) {
     Headers["Accept"] = "accept";
     Headers["ContentType"] = "content-type";
-})(Headers || (exports.Headers = Headers = {}));
+})(Headers = exports.Headers || (exports.Headers = {}));
 var MediaTypes;
 (function (MediaTypes) {
     MediaTypes["ApplicationJson"] = "application/json";
-})(MediaTypes || (exports.MediaTypes = MediaTypes = {}));
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
 /**
  * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
@@ -40090,15 +40085,6 @@ class HttpClient {
         const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
-    getAgentDispatcher(serverUrl) {
-        const parsedUrl = new URL(serverUrl);
-        const proxyUrl = pm.getProxyUrl(parsedUrl);
-        const useProxy = proxyUrl && proxyUrl.hostname;
-        if (!useProxy) {
-            return;
-        }
-        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
-    }
     _prepareRequest(method, requestUrl, headers) {
         const info = {};
         info.parsedUrl = requestUrl;
@@ -40146,7 +40132,7 @@ class HttpClient {
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
-        if (!useProxy) {
+        if (this._keepAlive && !useProxy) {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
@@ -40178,11 +40164,15 @@ class HttpClient {
             agent = tunnelAgent(agentOptions);
             this._proxyAgent = agent;
         }
-        // if tunneling agent isn't assigned create a new agent
-        if (!agent) {
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
             const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
         }
         if (usingSsl && this._ignoreSslError) {
             // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
@@ -40193,30 +40183,6 @@ class HttpClient {
             });
         }
         return agent;
-    }
-    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
-        let proxyAgent;
-        if (this._keepAlive) {
-            proxyAgent = this._proxyAgentDispatcher;
-        }
-        // if agent is already assigned use that agent.
-        if (proxyAgent) {
-            return proxyAgent;
-        }
-        const usingSsl = parsedUrl.protocol === 'https:';
-        proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
-        })));
-        this._proxyAgentDispatcher = proxyAgent;
-        if (usingSsl && this._ignoreSslError) {
-            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-            // we have to cast it to any and change it directly
-            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
-                rejectUnauthorized: false
-            });
-        }
-        return proxyAgent;
     }
     _performExponentialBackoff(retryNumber) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -40319,11 +40285,11 @@ function getProxyUrl(reqUrl) {
     })();
     if (proxyVar) {
         try {
-            return new DecodedURL(proxyVar);
+            return new URL(proxyVar);
         }
         catch (_a) {
             if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-                return new DecodedURL(`http://${proxyVar}`);
+                return new URL(`http://${proxyVar}`);
         }
     }
     else {
@@ -40381,19 +40347,6 @@ function isLoopbackAddress(host) {
         hostLower.startsWith('127.') ||
         hostLower.startsWith('[::1]') ||
         hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
-}
-class DecodedURL extends URL {
-    constructor(url, base) {
-        super(url, base);
-        this._decodedUsername = decodeURIComponent(super.username);
-        this._decodedPassword = decodeURIComponent(super.password);
-    }
-    get username() {
-        return this._decodedUsername;
-    }
-    get password() {
-        return this._decodedPassword;
-    }
 }
 //# sourceMappingURL=proxy.js.map
 
@@ -52068,11 +52021,7 @@ exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHand
 /* eslint-disable @typescript-eslint/no-explicit-any */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -52085,7 +52034,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -52104,7 +52053,6 @@ const http = __importStar(__nccwpck_require__(58611));
 const https = __importStar(__nccwpck_require__(65692));
 const pm = __importStar(__nccwpck_require__(53015));
 const tunnel = __importStar(__nccwpck_require__(20770));
-const undici_1 = __nccwpck_require__(46752);
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -52134,16 +52082,16 @@ var HttpCodes;
     HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
     HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
     HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
-})(HttpCodes || (exports.HttpCodes = HttpCodes = {}));
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
 var Headers;
 (function (Headers) {
     Headers["Accept"] = "accept";
     Headers["ContentType"] = "content-type";
-})(Headers || (exports.Headers = Headers = {}));
+})(Headers = exports.Headers || (exports.Headers = {}));
 var MediaTypes;
 (function (MediaTypes) {
     MediaTypes["ApplicationJson"] = "application/json";
-})(MediaTypes || (exports.MediaTypes = MediaTypes = {}));
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
 /**
  * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
@@ -52512,15 +52460,6 @@ class HttpClient {
         const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
-    getAgentDispatcher(serverUrl) {
-        const parsedUrl = new URL(serverUrl);
-        const proxyUrl = pm.getProxyUrl(parsedUrl);
-        const useProxy = proxyUrl && proxyUrl.hostname;
-        if (!useProxy) {
-            return;
-        }
-        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
-    }
     _prepareRequest(method, requestUrl, headers) {
         const info = {};
         info.parsedUrl = requestUrl;
@@ -52568,7 +52507,7 @@ class HttpClient {
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
-        if (!useProxy) {
+        if (this._keepAlive && !useProxy) {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
@@ -52600,11 +52539,15 @@ class HttpClient {
             agent = tunnelAgent(agentOptions);
             this._proxyAgent = agent;
         }
-        // if tunneling agent isn't assigned create a new agent
-        if (!agent) {
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
             const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
         }
         if (usingSsl && this._ignoreSslError) {
             // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
@@ -52615,30 +52558,6 @@ class HttpClient {
             });
         }
         return agent;
-    }
-    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
-        let proxyAgent;
-        if (this._keepAlive) {
-            proxyAgent = this._proxyAgentDispatcher;
-        }
-        // if agent is already assigned use that agent.
-        if (proxyAgent) {
-            return proxyAgent;
-        }
-        const usingSsl = parsedUrl.protocol === 'https:';
-        proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
-        })));
-        this._proxyAgentDispatcher = proxyAgent;
-        if (usingSsl && this._ignoreSslError) {
-            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-            // we have to cast it to any and change it directly
-            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
-                rejectUnauthorized: false
-            });
-        }
-        return proxyAgent;
     }
     _performExponentialBackoff(retryNumber) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -52741,11 +52660,11 @@ function getProxyUrl(reqUrl) {
     })();
     if (proxyVar) {
         try {
-            return new DecodedURL(proxyVar);
+            return new URL(proxyVar);
         }
         catch (_a) {
             if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-                return new DecodedURL(`http://${proxyVar}`);
+                return new URL(`http://${proxyVar}`);
         }
     }
     else {
@@ -52803,19 +52722,6 @@ function isLoopbackAddress(host) {
         hostLower.startsWith('127.') ||
         hostLower.startsWith('[::1]') ||
         hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
-}
-class DecodedURL extends URL {
-    constructor(url, base) {
-        super(url, base);
-        this._decodedUsername = decodeURIComponent(super.username);
-        this._decodedPassword = decodeURIComponent(super.password);
-    }
-    get username() {
-        return this._decodedUsername;
-    }
-    get password() {
-        return this._decodedPassword;
-    }
 }
 //# sourceMappingURL=proxy.js.map
 
@@ -54031,11 +53937,7 @@ exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHand
 /* eslint-disable @typescript-eslint/no-explicit-any */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -54048,7 +53950,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -54067,7 +53969,6 @@ const http = __importStar(__nccwpck_require__(58611));
 const https = __importStar(__nccwpck_require__(65692));
 const pm = __importStar(__nccwpck_require__(98856));
 const tunnel = __importStar(__nccwpck_require__(20770));
-const undici_1 = __nccwpck_require__(46752);
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -54097,16 +53998,16 @@ var HttpCodes;
     HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
     HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
     HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
-})(HttpCodes || (exports.HttpCodes = HttpCodes = {}));
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
 var Headers;
 (function (Headers) {
     Headers["Accept"] = "accept";
     Headers["ContentType"] = "content-type";
-})(Headers || (exports.Headers = Headers = {}));
+})(Headers = exports.Headers || (exports.Headers = {}));
 var MediaTypes;
 (function (MediaTypes) {
     MediaTypes["ApplicationJson"] = "application/json";
-})(MediaTypes || (exports.MediaTypes = MediaTypes = {}));
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
 /**
  * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
@@ -54475,15 +54376,6 @@ class HttpClient {
         const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
-    getAgentDispatcher(serverUrl) {
-        const parsedUrl = new URL(serverUrl);
-        const proxyUrl = pm.getProxyUrl(parsedUrl);
-        const useProxy = proxyUrl && proxyUrl.hostname;
-        if (!useProxy) {
-            return;
-        }
-        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
-    }
     _prepareRequest(method, requestUrl, headers) {
         const info = {};
         info.parsedUrl = requestUrl;
@@ -54531,7 +54423,7 @@ class HttpClient {
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
-        if (!useProxy) {
+        if (this._keepAlive && !useProxy) {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
@@ -54563,11 +54455,15 @@ class HttpClient {
             agent = tunnelAgent(agentOptions);
             this._proxyAgent = agent;
         }
-        // if tunneling agent isn't assigned create a new agent
-        if (!agent) {
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
             const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
         }
         if (usingSsl && this._ignoreSslError) {
             // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
@@ -54578,30 +54474,6 @@ class HttpClient {
             });
         }
         return agent;
-    }
-    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
-        let proxyAgent;
-        if (this._keepAlive) {
-            proxyAgent = this._proxyAgentDispatcher;
-        }
-        // if agent is already assigned use that agent.
-        if (proxyAgent) {
-            return proxyAgent;
-        }
-        const usingSsl = parsedUrl.protocol === 'https:';
-        proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
-        })));
-        this._proxyAgentDispatcher = proxyAgent;
-        if (usingSsl && this._ignoreSslError) {
-            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-            // we have to cast it to any and change it directly
-            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
-                rejectUnauthorized: false
-            });
-        }
-        return proxyAgent;
     }
     _performExponentialBackoff(retryNumber) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -54704,11 +54576,11 @@ function getProxyUrl(reqUrl) {
     })();
     if (proxyVar) {
         try {
-            return new DecodedURL(proxyVar);
+            return new URL(proxyVar);
         }
         catch (_a) {
             if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-                return new DecodedURL(`http://${proxyVar}`);
+                return new URL(`http://${proxyVar}`);
         }
     }
     else {
@@ -54766,19 +54638,6 @@ function isLoopbackAddress(host) {
         hostLower.startsWith('127.') ||
         hostLower.startsWith('[::1]') ||
         hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
-}
-class DecodedURL extends URL {
-    constructor(url, base) {
-        super(url, base);
-        this._decodedUsername = decodeURIComponent(super.username);
-        this._decodedPassword = decodeURIComponent(super.password);
-    }
-    get username() {
-        return this._decodedUsername;
-    }
-    get password() {
-        return this._decodedPassword;
-    }
 }
 //# sourceMappingURL=proxy.js.map
 
@@ -57218,11 +57077,7 @@ exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHand
 /* eslint-disable @typescript-eslint/no-explicit-any */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -57235,7 +57090,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -57254,7 +57109,6 @@ const http = __importStar(__nccwpck_require__(58611));
 const https = __importStar(__nccwpck_require__(65692));
 const pm = __importStar(__nccwpck_require__(24897));
 const tunnel = __importStar(__nccwpck_require__(20770));
-const undici_1 = __nccwpck_require__(46752);
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -57284,16 +57138,16 @@ var HttpCodes;
     HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
     HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
     HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
-})(HttpCodes || (exports.HttpCodes = HttpCodes = {}));
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
 var Headers;
 (function (Headers) {
     Headers["Accept"] = "accept";
     Headers["ContentType"] = "content-type";
-})(Headers || (exports.Headers = Headers = {}));
+})(Headers = exports.Headers || (exports.Headers = {}));
 var MediaTypes;
 (function (MediaTypes) {
     MediaTypes["ApplicationJson"] = "application/json";
-})(MediaTypes || (exports.MediaTypes = MediaTypes = {}));
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
 /**
  * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
@@ -57662,15 +57516,6 @@ class HttpClient {
         const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
-    getAgentDispatcher(serverUrl) {
-        const parsedUrl = new URL(serverUrl);
-        const proxyUrl = pm.getProxyUrl(parsedUrl);
-        const useProxy = proxyUrl && proxyUrl.hostname;
-        if (!useProxy) {
-            return;
-        }
-        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
-    }
     _prepareRequest(method, requestUrl, headers) {
         const info = {};
         info.parsedUrl = requestUrl;
@@ -57718,7 +57563,7 @@ class HttpClient {
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
-        if (!useProxy) {
+        if (this._keepAlive && !useProxy) {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
@@ -57750,11 +57595,15 @@ class HttpClient {
             agent = tunnelAgent(agentOptions);
             this._proxyAgent = agent;
         }
-        // if tunneling agent isn't assigned create a new agent
-        if (!agent) {
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
             const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
         }
         if (usingSsl && this._ignoreSslError) {
             // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
@@ -57765,30 +57614,6 @@ class HttpClient {
             });
         }
         return agent;
-    }
-    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
-        let proxyAgent;
-        if (this._keepAlive) {
-            proxyAgent = this._proxyAgentDispatcher;
-        }
-        // if agent is already assigned use that agent.
-        if (proxyAgent) {
-            return proxyAgent;
-        }
-        const usingSsl = parsedUrl.protocol === 'https:';
-        proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
-        })));
-        this._proxyAgentDispatcher = proxyAgent;
-        if (usingSsl && this._ignoreSslError) {
-            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-            // we have to cast it to any and change it directly
-            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
-                rejectUnauthorized: false
-            });
-        }
-        return proxyAgent;
     }
     _performExponentialBackoff(retryNumber) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -57891,11 +57716,11 @@ function getProxyUrl(reqUrl) {
     })();
     if (proxyVar) {
         try {
-            return new DecodedURL(proxyVar);
+            return new URL(proxyVar);
         }
         catch (_a) {
             if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-                return new DecodedURL(`http://${proxyVar}`);
+                return new URL(`http://${proxyVar}`);
         }
     }
     else {
@@ -57953,19 +57778,6 @@ function isLoopbackAddress(host) {
         hostLower.startsWith('127.') ||
         hostLower.startsWith('[::1]') ||
         hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
-}
-class DecodedURL extends URL {
-    constructor(url, base) {
-        super(url, base);
-        this._decodedUsername = decodeURIComponent(super.username);
-        this._decodedPassword = decodeURIComponent(super.password);
-    }
-    get username() {
-        return this._decodedUsername;
-    }
-    get password() {
-        return this._decodedPassword;
-    }
 }
 //# sourceMappingURL=proxy.js.map
 
@@ -58961,73 +58773,261 @@ module.exports = BufferList
 /***/ 94691:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var concatMap = __nccwpck_require__(97087);
-var balanced = __nccwpck_require__(59380);
+var concatMap = __nccwpck_require__(97087)
+var balanced = __nccwpck_require__(59380)
 
-module.exports = expandTop;
+module.exports = expandTop
 
-var escSlash = '\0SLASH'+Math.random()+'\0';
-var escOpen = '\0OPEN'+Math.random()+'\0';
-var escClose = '\0CLOSE'+Math.random()+'\0';
-var escComma = '\0COMMA'+Math.random()+'\0';
-var escPeriod = '\0PERIOD'+Math.random()+'\0';
+var escSlash = '\0SLASH' + Math.random().toFixed(16) + '\0'
+var escOpen = '\0OPEN' + Math.random().toFixed(16) + '\0'
+var escClose = '\0CLOSE' + Math.random().toFixed(16) + '\0'
+var escComma = '\0COMMA' + Math.random().toFixed(16) + '\0'
+var escPeriod = '\0PERIOD' + Math.random().toFixed(16) + '\0'
+
+var EXPANSION_MAX = 100000
+
+// `EXPANSION_MAX` caps the *number* of expansions, but not their length. An
+// input like `'{a,b}'.repeat(1500)` stays under that count - its output is
+// truncated to 100k results - while making every result ~1500 characters
+// long. The result set, and the intermediate arrays built while combining
+// brace sets, then grow large enough to exhaust memory and crash the process
+// (CVE-2026-14257). `EXPANSION_MAX_LENGTH` bounds the total number of
+// characters the accumulator may hold at any point, so memory stays flat no
+// matter how many brace groups are chained. The limit sits well above any
+// realistic expansion (100k results hitting `EXPANSION_MAX` measure ~1M
+// characters) so legitimate input is unaffected.
+var EXPANSION_MAX_LENGTH = 4000000
+
+// `expand` recurses once per level of brace *nesting* - both when expanding a
+// set's comma members and when re-wrapping a set whose body is a single part.
+// The CVE-2026-14257 fix made the *tail* iterative (recursion on `m.post`, one
+// level per chained group), which left nesting depth unbounded: about 3,100
+// levels of `{{{...a,b...}}}` - only ~6KB of input - exhausted the native stack
+// and crashed the process. `EXPANSION_MAX_DEPTH` bounds how deep the parser
+// will follow nesting. It sits far above any realistic pattern and well below
+// the depth at which the stack runs out.
+var EXPANSION_MAX_DEPTH = 1000
+
+// Bash keeps a quirk where a brace group followed by a comma set still expands
+// (`{a},b}`). The parser implements it by rewriting the string and restarting
+// the scan, absorbing one `}` per pass. `n` trailing braces therefore cost `n`
+// full passes over a string that itself grows by one `escClose` sentinel each
+// time - quadratic in `n`, with a ~26x constant from the sentinel's length.
+// 128KB of `'{a}' + '}'.repeat(n) + ',z}'` blocked the event loop for 27
+// seconds to produce two results. `EXPANSION_MAX_REWRITES` bounds how many
+// times the scan may restart. Real `{a},b}` input needs a handful.
+var EXPANSION_MAX_REWRITES = 1000
+
+// `EXPANSION_MAX_STEPS` bounds the work one `expandTop` call does, which `max`,
+// `maxLength` and `maxDepth` don't: nested sets are rescanned at every level
+// and chained groups each rebuild up to `max` results, so 2KB of input could
+// block the event loop for over 30 seconds. Each character scanned, result
+// built and sequence value generated is a step, and each `expand` call costs
+// `CALL_STEPS` more. Past the budget, the set being expanded and everything
+// after it stay literal. A glob needs a few hundred steps, and nesting all the
+// way to `EXPANSION_MAX_DEPTH` about 4M.
+var EXPANSION_MAX_STEPS = 20000000
+
+// What one `expand` call costs on top of what it scans and builds. Setting
+// one up takes about as long as scanning 16 characters, and a set whose
+// results are wrapped to be expanded again makes one call per result, each
+// scanning and building next to nothing: 64KB of
+// `('{{' + ','.repeat(316) + '}{' + ','.repeat(316) + '}}').repeat(n)` made
+// 4M such calls, which spent the budget three times as slowly as anything
+// else.
+var CALL_STEPS = 16
 
 function numeric(str) {
-  return parseInt(str, 10) == str
-    ? parseInt(str, 10)
-    : str.charCodeAt(0);
+  return parseInt(str, 10) == str ? parseInt(str, 10) : str.charCodeAt(0)
 }
 
 function escapeBraces(str) {
-  return str.split('\\\\').join(escSlash)
-            .split('\\{').join(escOpen)
-            .split('\\}').join(escClose)
-            .split('\\,').join(escComma)
-            .split('\\.').join(escPeriod);
+  return str
+    .split('\\\\')
+    .join(escSlash)
+    .split('\\{')
+    .join(escOpen)
+    .split('\\}')
+    .join(escClose)
+    .split('\\,')
+    .join(escComma)
+    .split('\\.')
+    .join(escPeriod)
 }
 
 function unescapeBraces(str) {
-  return str.split(escSlash).join('\\')
-            .split(escOpen).join('{')
-            .split(escClose).join('}')
-            .split(escComma).join(',')
-            .split(escPeriod).join('.');
+  return str
+    .split(escSlash)
+    .join('\\')
+    .split(escOpen)
+    .join('{')
+    .split(escClose)
+    .join('}')
+    .split(escComma)
+    .join(',')
+    .split(escPeriod)
+    .join('.')
 }
 
+// Like `target.push(...items)` but doesn't overflow the stack
+function pushAll(target, items) {
+  for (var i = 0; i < items.length; i++) {
+    target.push(items[i])
+  }
+}
+
+// `balanced`, run on `masked` (see `maskUnmatchedOpens`), sliced from `str`
+// and charged for the characters it walks: up to the group's `}`, or the
+// whole string when there is no match or unmatched `{` come first, which
+// `unmatched` then flags for masking. Once a call overdraws the budget, it
+// and every later one return undefined, so the rest stays literal.
+//
+// `budget` is `{ remaining }`, one counter shared by every level and group of
+// an `expandTop` call, so the bound holds for the call as a whole.
+function balancedWithBudget(str, masked, budget) {
+  if (budget.remaining < 0) {
+    return undefined
+  }
+  var r = balanced.range('{', '}', masked)
+  var unmatched = r !== undefined && masked.indexOf('{') < r[0]
+  budget.remaining -= r && !unmatched ? r[1] + 1 : str.length
+  if (!r || budget.remaining < 0) {
+    return undefined
+  }
+  return {
+    end: r[1],
+    pre: str.slice(0, r[0]),
+    body: str.slice(r[0] + 1, r[1]),
+    post: str.slice(r[1] + 1),
+    unmatched: unmatched,
+  }
+}
+
+// `masked` with every `{` that has no matching `}` swapped for a `\0`, which
+// keeps the length, so a scan of it still lines up with the string it was
+// made from. Such a `{` is literal either way, but `balanced` only learns that
+// one is unmatched by reading to the end of the string, so with one at the
+// head of every group (`'{a,{b,c}'.repeat(n)`) each scan read the rest of the
+// input. That was quadratic, and once the step budget charged for it, it ran
+// out partway through and left the rest literal. A scan of the masked copy
+// stops at the group's `}`. It is one pass, charged as such.
+function maskUnmatchedOpens(masked, budget) {
+  budget.remaining -= masked.length
+  var open = []
+  for (var i = 0; i < masked.length; i++) {
+    var c = masked.charCodeAt(i)
+    if (c === 0x7b) {
+      open.push(i)
+    } else if (c === 0x7d && open.length) {
+      open.pop()
+    }
+  }
+  var out = ''
+  var last = 0
+  for (var j = 0; j < open.length; j++) {
+    out += masked.slice(last, open[j]) + '\0'
+    last = open[j] + 1
+  }
+  return out + masked.slice(last)
+}
+
+// Whether `str` has a `,` not followed by another `,`, with a `}` after it on
+// the same line - what `/,(?!,).*\}/.test(str)` asks, answered in one pass from
+// the end. The regex tries every `,` and backtracks through the rest of its
+// line from each, which is quadratic, and the `{a},b}` rewrite asks again on
+// every pass. Like a scan, it is charged for the whole string and refused if
+// that overdraws the budget.
+function commaSetFollows(str, budget) {
+  budget.remaining -= str.length
+  if (budget.remaining < 0) {
+    return false
+  }
+  // Whether a `}` follows the current position before the line ends
+  var close = false
+  for (var i = str.length - 1; i >= 0; i--) {
+    var c = str.charCodeAt(i)
+    if (c === 0x7d) {
+      close = true
+    } else if (c === 0x0a || c === 0x0d || c === 0x2028 || c === 0x2029) {
+      // A line terminator, which `.` does not match
+      close = false
+    } else if (c === 0x2c && close && str.charCodeAt(i + 1) !== 0x2c) {
+      return true
+    }
+  }
+  return false
+}
 
 // Basically just str.split(","), but handling cases
 // where we have nested braced sections, which should be
 // treated as individual members, like {a,{b,c},d}
-function parseCommaParts(str) {
-  if (!str)
-    return [''];
+//
+// Returns `undefined` if the step budget runs out before the whole set is
+// split, since splitting what is left on every comma would tear apart the
+// nested sets it still holds.
+function parseCommaParts(str, budget) {
+  var parts = []
 
-  var parts = [];
-  var m = balanced('{', '}', str);
+  // Walk the brace groups iteratively. Recursing on `post` once per group let a
+  // chain of them exhaust the stack - the parsing-side counterpart to
+  // the `expand` overflow fixed for CVE-2026-14257, and not something `max` or
+  // `maxLength` can bound, since it happens before expansion.
+  //
+  // The part the next chunk continues
+  var carry = ''
 
-  if (!m)
-    return str.split(',');
+  for (;;) {
+    // A set's body holds no unmatched `{`, so there is nothing to mask.
+    var m = balancedWithBudget(str, str, budget)
 
-  var pre = m.pre;
-  var body = m.body;
-  var post = m.post;
-  var p = pre.split(',');
+    if (budget.remaining < 0) {
+      return undefined
+    }
 
-  p[p.length-1] += '{' + body + '}';
-  var postParts = parseCommaParts(post);
-  if (post.length) {
-    p[p.length-1] += postParts.shift();
-    p.push.apply(p, postParts);
+    if (!m) {
+      var tail = str.split(',')
+      tail[0] = carry + tail[0]
+      pushAll(parts, tail)
+      return parts
+    }
+
+    var pre = m.pre
+    var body = m.body
+    var post = m.post
+    var p = pre.split(',')
+
+    p[0] = carry + p[0]
+    p[p.length - 1] += '{' + body + '}'
+
+    if (!post.length) {
+      pushAll(parts, p)
+      return parts
+    }
+
+    carry = p.pop()
+    pushAll(parts, p)
+    str = post
   }
-
-  parts.push.apply(parts, p);
-
-  return parts;
 }
 
-function expandTop(str) {
-  if (!str)
-    return [];
+// An option that is left out or null, or that is NaN, gets its default. Every
+// comparison against NaN is false, so a NaN bound would never be reached:
+// `{ maxSteps: NaN }` let 15KB of input block the event loop for 16 seconds,
+// and `{ maxDepth: NaN }` overflowed the stack again (CVE-2026-102278). Pass
+// `Infinity` to lift a bound.
+function bound(value, fallback) {
+  return value == null || isNaN(value) ? fallback : value
+}
+
+function expandTop(str, options) {
+  if (!str) return []
+
+  options = options || {}
+  var max = bound(options.max, EXPANSION_MAX)
+  var maxLength = bound(options.maxLength, EXPANSION_MAX_LENGTH)
+  var maxDepth = bound(options.maxDepth, EXPANSION_MAX_DEPTH)
+  var maxRewrites = bound(options.maxRewrites, EXPANSION_MAX_REWRITES)
+  var maxSteps = bound(options.maxSteps, EXPANSION_MAX_STEPS)
 
   // I don't know why Bash 4.3 does this, but it does.
   // Anything starting with {} will have the first two bytes preserved
@@ -59036,132 +59036,439 @@ function expandTop(str) {
   // One could argue that this is a bug in Bash, but since the goal of
   // this module is to match Bash's rules, we escape a leading {}
   if (str.substr(0, 2) === '{}') {
-    str = '\\{\\}' + str.substr(2);
+    str = '\\{\\}' + str.substr(2)
   }
 
-  return expand(escapeBraces(str), true).map(unescapeBraces);
+  return expand(
+    escapeBraces(str),
+    max,
+    maxLength,
+    maxDepth,
+    0,
+    maxRewrites,
+    { remaining: maxSteps },
+    true
+  ).map(unescapeBraces)
 }
 
 function identity(e) {
-  return e;
+  return e
 }
 
 function embrace(str) {
-  return '{' + str + '}';
+  return '{' + str + '}'
 }
 function isPadded(el) {
-  return /^-?0\d/.test(el);
+  return /^-?0\d/.test(el)
 }
 
 function lte(i, y) {
-  return i <= y;
+  return i <= y
 }
 function gte(i, y) {
-  return i >= y;
+  return i >= y
 }
 
-function expand(str, isTop) {
-  var expansions = [];
-
-  var m = balanced('{', '}', str);
-  if (!m || /\$$/.test(m.pre)) return [str];
-
-  var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
-  var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
-  var isSequence = isNumericSequence || isAlphaSequence;
-  var isOptions = m.body.indexOf(',') >= 0;
-  if (!isSequence && !isOptions) {
-    // {a},b}
-    if (m.post.match(/,(?!,).*\}/)) {
-      str = m.pre + '{' + m.body + escClose + m.post;
-      return expand(str);
+// Build `{ acc[a] + pre + values[v] }` for every combination, capping the
+// number of results at `max` and the total number of characters at `maxLength`.
+// This is the one place output grows, so bounding it here keeps the single
+// accumulator - and therefore memory - flat regardless of how many brace groups
+// are combined (CVE-2026-14257). Each result built is a step, since `max` and
+// `maxLength` bound one combination, not how many brace groups are combined.
+//
+// `base[a]` is the length of the part of `acc[a]` that predates the current
+// empty-drop baseline (see `expand`). The matching baselines for the results
+// are appended to `outBase`, which the caller carries forward alongside them.
+function combine(
+  acc,
+  base,
+  pre,
+  values,
+  max,
+  maxLength,
+  dropEmpties,
+  outBase,
+  budget
+) {
+  var out = []
+  var length = 0
+  // Bash drops empty results at the top level, and they don't count against
+  // `max`, so `max` bounds the number of *kept* results. "Empty" means "adds
+  // nothing past the baseline", not "empty overall", and only an `acc[a] + pre`
+  // that adds nothing can make one, so for those the empty values are skipped
+  // without being visited. Visiting them one at a time let a set of empties
+  // cost `acc.length * values.length` while keeping nothing.
+  var nonEmpty
+  outer: for (var a = 0; a < acc.length; a++) {
+    var prefix = acc[a] + pre
+    var vs = values
+    if (dropEmpties && prefix.length === base[a]) {
+      if (!nonEmpty) nonEmpty = values.filter(Boolean)
+      vs = nonEmpty
     }
-    return [str];
+    for (var v = 0; v < vs.length; v++) {
+      if (out.length >= max) break outer
+      var expansion = prefix + vs[v]
+      if (length + expansion.length > maxLength) break outer
+      out.push(expansion)
+      outBase.push(base[a])
+      length += expansion.length
+    }
   }
+  budget.remaining -= out.length
+  return out
+}
 
-  var n;
-  if (isSequence) {
-    n = m.body.split(/\.\./);
-  } else {
-    n = parseCommaParts(m.body);
-    if (n.length === 1) {
-      // x{{a,b}}y ==> x{a}y x{b}y
-      n = expand(n[0], false).map(embrace);
-      if (n.length === 1) {
-        var post = m.post.length
-          ? expand(m.post, false)
-          : [''];
-        return post.map(function(p) {
-          return m.pre + n[0] + p;
-        });
+// The expansion values of a single numeric (`1..5`) or alphabetic (`a..e..2`)
+// sequence body, or `undefined` if the step budget runs out generating them.
+function expandSequence(body, isAlphaSequence, max, maxLength, budget) {
+  var n = body.split(/\.\./)
+  var N = []
+  // A sequence body always splits into two or three parts, but the compiler
+  // can't know that.
+  /* c8 ignore start */
+  if (n[0] === undefined || n[1] === undefined) {
+    return N
+  }
+  /* c8 ignore stop */
+  var x = numeric(n[0])
+  var y = numeric(n[1])
+  var width = Math.max(n[0].length, n[1].length)
+  var incr =
+    n.length === 3 && n[2] !== undefined ?
+      Math.max(Math.abs(numeric(n[2])), 1)
+    : 1
+  var test = lte
+  var reverse = y < x
+  if (reverse) {
+    incr *= -1
+    test = gte
+  }
+  var pad = n.some(isPadded)
+  // A padded value is built a character at a time to `width`, which the input
+  // sets, so it costs one step per character: 64KB of
+  // `('{' + '0'.repeat(100) + '..99999}').repeat(n)` took 7 seconds charged
+  // one step per value.
+  var cost = pad ? width : 1
+
+  var length = 0
+  for (var i = x; test(i, y) && N.length < max; i += incr) {
+    // Each value is a step. `max` and `maxLength` bound one sequence, but a
+    // chain of them still generated up to `max` values each, however few
+    // combining could keep.
+    budget.remaining -= cost
+    if (budget.remaining < 0) {
+      return undefined
+    }
+    var c
+    if (isAlphaSequence) {
+      c = String.fromCharCode(i)
+      if (c === '\\') {
+        c = ''
       }
-    }
-  }
-
-  // at this point, n is the parts, and we know it's not a comma set
-  // with a single entry.
-
-  // no need to expand pre, since it is guaranteed to be free of brace-sets
-  var pre = m.pre;
-  var post = m.post.length
-    ? expand(m.post, false)
-    : [''];
-
-  var N;
-
-  if (isSequence) {
-    var x = numeric(n[0]);
-    var y = numeric(n[1]);
-    var width = Math.max(n[0].length, n[1].length)
-    var incr = n.length == 3
-      ? Math.abs(numeric(n[2]))
-      : 1;
-    var test = lte;
-    var reverse = y < x;
-    if (reverse) {
-      incr *= -1;
-      test = gte;
-    }
-    var pad = n.some(isPadded);
-
-    N = [];
-
-    for (var i = x; test(i, y); i += incr) {
-      var c;
-      if (isAlphaSequence) {
-        c = String.fromCharCode(i);
-        if (c === '\\')
-          c = '';
-      } else {
-        c = String(i);
-        if (pad) {
-          var need = width - c.length;
-          if (need > 0) {
-            var z = new Array(need + 1).join('0');
-            if (i < 0)
-              c = '-' + z + c.slice(1);
-            else
-              c = z + c;
+    } else {
+      c = String(i)
+      if (pad) {
+        var need = width - c.length
+        if (need > 0) {
+          var z = new Array(need + 1).join('0')
+          if (i < 0) {
+            c = '-' + z + c.slice(1)
+          } else {
+            c = z + c
           }
         }
       }
-      N.push(c);
     }
-  } else {
-    N = concatMap(n, function(el) { return expand(el, false) });
+    if (length + c.length > maxLength) break
+    N.push(c)
+    length += c.length
   }
-
-  for (var j = 0; j < N.length; j++) {
-    for (var k = 0; k < post.length; k++) {
-      var expansion = pre + N[j] + post[k];
-      if (!isTop || isSequence || expansion)
-        expansions.push(expansion);
-    }
-  }
-
-  return expansions;
+  return N
 }
 
+function expand(
+  str,
+  max,
+  maxLength,
+  maxDepth,
+  depth,
+  maxRewrites,
+  budget,
+  isTop
+) {
+  // An overdraft here makes the first scan refuse, so `str` stays literal.
+  budget.remaining -= CALL_STEPS
+
+  // Too deeply nested to keep following: treat the rest as literal, the same
+  // way a group that cannot expand is already handled. Truncating rather than
+  // throwing keeps expansion total, matching `max` and `maxLength`.
+  if (depth > maxDepth) {
+    return [str]
+  }
+
+  // Consume the string's top-level brace groups left to right, threading a
+  // running set of combined prefixes (`acc`). Expanding the tail iteratively -
+  // rather than recursing on `m.post` once per group - keeps the native stack
+  // depth constant, so deeply chained input (`'{a,b}'.repeat(3000)`) can no
+  // longer overflow the stack, and leaves a single accumulator whose size
+  // `maxLength` bounds directly (CVE-2026-14257).
+  var acc = ['']
+
+  // Bash drops empty results, but only when the *first* group of the run is a
+  // comma set - a sequence like `{a..\}` may legitimately yield ''. The drop
+  // is on the final strings, so it is applied to whichever `combine` produces
+  // them (the one with no brace set left in the tail).
+  //
+  // The old implementation recursed on `m.post`, so the drop tested only the
+  // expansion of the current call's substring. The `{a},b}` rewrite below turns
+  // `isTop` back on part-way through a string, starting a fresh such run, so
+  // the drop must ignore whatever `acc` already holds from earlier groups.
+  // `accBase[a]` records how much of `acc[a]` predates the current run;
+  // `combine` treats an expansion as empty when it adds nothing past that.
+  var accBase = [0]
+  // How many times the `{a},b}` rewrite below has restarted the scan. Each pass
+  // re-reads the whole string, so leaving this unbounded is quadratic.
+  var rewrites = 0
+  var dropEmpties = false
+  var firstGroup = true
+  // `str` with its unmatched `{` masked, once a scan has run into them
+  var masked = str
+  var nextBase
+
+  for (;;) {
+    var m = balancedWithBudget(str, masked, budget)
+
+    // No brace set left, or no step budget left to look for one: the rest of
+    // the string is literal.
+    if (!m) {
+      return combine(
+        acc,
+        accBase,
+        str,
+        [''],
+        max,
+        maxLength,
+        dropEmpties,
+        [],
+        budget
+      )
+    }
+    if (m.unmatched) {
+      masked = maskUnmatchedOpens(masked, budget)
+    }
+
+    // no need to expand pre, since it is guaranteed to be free of brace-sets
+    var pre = m.pre
+
+    // This set and the rest of the string, literal: for a set that cannot
+    // expand, and for one the step budget runs out on. Once it is overdrawn,
+    // every set still being expanded, at every level, stays literal like this -
+    // otherwise each level above would go on combining, and wrapping and
+    // expanding again, results the budget was too small for.
+    var literal = function () {
+      return combine(
+        acc,
+        accBase,
+        pre + '{' + m.body + '}' + m.post,
+        [''],
+        max,
+        maxLength,
+        dropEmpties,
+        [],
+        budget
+      )
+    }
+
+    // For compatibility reasons, `${` is not eligible for brace expansion, and
+    // on the 1.x line it suppresses expansion of the rest of the string too:
+    // the whole remainder is literal. The 2.x and 5.x lines instead keep
+    // expanding the tail, which is what bash does, but changing that here would
+    // be a breaking change for 1.x consumers. Routed through `combine` so the
+    // result is still bounded by `max` and `maxLength`.
+    if (/\$$/.test(pre)) {
+      return combine(
+        acc,
+        accBase,
+        str,
+        [''],
+        max,
+        maxLength,
+        dropEmpties,
+        [],
+        budget
+      )
+    }
+
+    var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body)
+    var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(
+      m.body
+    )
+    var isSequence = isNumericSequence || isAlphaSequence
+    var isOptions = m.body.indexOf(',') >= 0
+    if (!isSequence && !isOptions) {
+      // {a},b}
+      if (rewrites < maxRewrites && commaSetFollows(m.post, budget)) {
+        rewrites++
+        str = m.pre + '{' + m.body + escClose + m.post
+        // Taking a `}` away never gives an unmatched `{` a partner, so what
+        // is masked stays unmatched. The `{` it closed can be left without
+        // one, and the next scan masks it.
+        masked =
+          masked.slice(0, m.end) + escClose + masked.slice(m.end + 1)
+        // The rewritten string is expanded as if it were a fresh top-level one,
+        // so start a new empty-drop run: anchor the baseline at what `acc`
+        // holds now, and let the next expanding group decide whether to drop.
+        isTop = true
+        firstGroup = true
+        dropEmpties = false
+        accBase = []
+        for (var b = 0; b < acc.length; b++) {
+          accBase.push(acc[b].length)
+        }
+        continue
+      }
+      // Nothing here expands, so the whole remaining string is literal.
+      return literal()
+    }
+
+    if (firstGroup) {
+      dropEmpties = isTop && !isSequence
+      firstGroup = false
+    }
+
+    var values
+    if (isSequence) {
+      values = expandSequence(
+        m.body,
+        isAlphaSequence,
+        max,
+        maxLength,
+        budget
+      )
+      if (!values) {
+        return literal()
+      }
+    } else {
+      var n = parseCommaParts(m.body, budget)
+      // The step budget ran out partway through the set.
+      if (!n) {
+        return literal()
+      }
+      if (n.length === 1 && n[0] !== undefined) {
+        // x{{a,b}}y ==> x{a}y x{b}y
+        n = expand(
+          n[0],
+          max,
+          maxLength,
+          maxDepth,
+          depth + 1,
+          maxRewrites,
+          budget,
+          false
+        ).map(embrace)
+        // The step budget ran out expanding the set's only part.
+        if (budget.remaining < 0) {
+          return literal()
+        }
+        //XXX is this necessary? Can't seem to hit it in tests.
+        /* c8 ignore start */
+        if (n.length === 1) {
+          nextBase = []
+          var single = combine(
+            acc,
+            accBase,
+            pre + n[0],
+            [''],
+            max,
+            maxLength,
+            dropEmpties && !m.post.length,
+            nextBase,
+            budget
+          )
+          if (budget.remaining < 0) {
+            return literal()
+          }
+          acc = single
+          accBase = nextBase
+          if (!m.post.length) break
+          str = m.post
+          masked = masked.slice(m.end + 1)
+          continue
+        }
+        /* c8 ignore stop */
+      }
+
+      // Values that `combine` is going to drop as empty produce no result, so
+      // they must not count against `max` - otherwise `{a,,b}` with `max: 2`
+      // would stop at `['a', '']` and yield one result instead of two. Skipping
+      // them outright keeps `values` bounded while leaving `max` a bound on
+      // *kept* results. A value is dropped when it adds nothing past the
+      // baseline, which is what `combine` tests.
+      var dropsEmpties = dropEmpties && !m.post.length && !pre
+      for (var d = 0; dropsEmpties && d < acc.length; d++) {
+        if (acc[d].length !== accBase[d]) {
+          dropsEmpties = false
+        }
+      }
+
+      values = []
+      var valuesLength = 0
+      outer: for (var j = 0; j < n.length; j++) {
+        var expanded = expand(
+          n[j],
+          max,
+          maxLength,
+          maxDepth,
+          depth + 1,
+          maxRewrites,
+          budget,
+          false
+        )
+        // The step budget ran out expanding a member.
+        if (budget.remaining < 0) {
+          return literal()
+        }
+        for (var k = 0; k < expanded.length; k++) {
+          var v = expanded[k]
+          if (dropsEmpties && !v) continue
+          if (
+            values.length >= max ||
+            valuesLength + v.length > maxLength
+          ) {
+            break outer
+          }
+          values.push(v)
+          valuesLength += v.length
+        }
+      }
+    }
+
+    nextBase = []
+    var next = combine(
+      acc,
+      accBase,
+      pre,
+      values,
+      max,
+      maxLength,
+      dropEmpties && !m.post.length,
+      nextBase,
+      budget
+    )
+    // The step budget ran out combining the set's values in.
+    if (budget.remaining < 0) {
+      return literal()
+    }
+    acc = next
+    accBase = nextBase
+    if (!m.post.length) break
+    str = m.post
+    masked = masked.slice(m.end + 1)
+  }
+
+  return acc
+}
 
 
 /***/ }),
@@ -78164,7 +78471,7 @@ function Writable(fn, options) {
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.23';
+  var VERSION = '4.18.1';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
@@ -78172,7 +78479,8 @@ function Writable(fn, options) {
   /** Error message constants. */
   var CORE_ERROR_TEXT = 'Unsupported core-js use. Try https://npms.io/search?q=ponyfill.',
       FUNC_ERROR_TEXT = 'Expected a function',
-      INVALID_TEMPL_VAR_ERROR_TEXT = 'Invalid `variable` option passed into `_.template`';
+      INVALID_TEMPL_VAR_ERROR_TEXT = 'Invalid `variable` option passed into `_.template`',
+      INVALID_TEMPL_IMPORTS_ERROR_TEXT = 'Invalid `imports` option passed into `_.template`';
 
   /** Used to stand-in for `undefined` hash values. */
   var HASH_UNDEFINED = '__lodash_hash_undefined__';
@@ -79904,6 +80212,10 @@ function Writable(fn, options) {
      * embedded Ruby (ERB) as well as ES2015 template strings. Change the
      * following template settings to use alternative delimiters.
      *
+     * **Security:** See
+     * [threat model](https://github.com/lodash/lodash/blob/main/threat-model.md)
+     * — `_.template` is insecure and will be removed in v5.
+     *
      * @static
      * @memberOf _
      * @type {Object}
@@ -80452,7 +80764,7 @@ function Writable(fn, options) {
      * @name has
      * @memberOf SetCache
      * @param {*} value The value to search for.
-     * @returns {number} Returns `true` if `value` is found, else `false`.
+     * @returns {boolean} Returns `true` if `value` is found, else `false`.
      */
     function setCacheHas(value) {
       return this.__data__.has(value);
@@ -82523,7 +82835,9 @@ function Writable(fn, options) {
     function baseUnset(object, path) {
       path = castPath(path, object);
 
-      // Prevent prototype pollution, see: https://github.com/lodash/lodash/security/advisories/GHSA-xxjr-mmjv-4gpg
+      // Prevent prototype pollution:
+      // https://github.com/lodash/lodash/security/advisories/GHSA-xxjr-mmjv-4gpg
+      // https://github.com/lodash/lodash/security/advisories/GHSA-f23m-r3pf-42rh
       var index = -1,
           length = path.length;
 
@@ -82531,32 +82845,17 @@ function Writable(fn, options) {
         return true;
       }
 
-      var isRootPrimitive = object == null || (typeof object !== 'object' && typeof object !== 'function');
-
       while (++index < length) {
-        var key = path[index];
-
-        // skip non-string keys (e.g., Symbols, numbers)
-        if (typeof key !== 'string') {
-          continue;
-        }
+        var key = toKey(path[index]);
 
         // Always block "__proto__" anywhere in the path if it's not expected
         if (key === '__proto__' && !hasOwnProperty.call(object, '__proto__')) {
           return false;
         }
 
-        // Block "constructor.prototype" chains
-        if (key === 'constructor' &&
-            (index + 1) < length &&
-            typeof path[index + 1] === 'string' &&
-            path[index + 1] === 'prototype') {
-
-          // Allow ONLY when the path starts at a primitive root, e.g., _.unset(0, 'constructor.prototype.a')
-          if (isRootPrimitive && index === 0) {
-            continue;
-          }
-
+        // Block constructor/prototype as non-terminal traversal keys to prevent
+        // escaping the object graph into built-in constructors and prototypes.
+        if ((key === 'constructor' || key === 'prototype') && index < length - 1) {
           return false;
         }
       }
@@ -85113,7 +85412,7 @@ function Writable(fn, options) {
 
     /**
      * Creates an array with all falsey values removed. The values `false`, `null`,
-     * `0`, `""`, `undefined`, and `NaN` are falsey.
+     * `0`, `-0`, `0n`, `""`, `undefined`, and `NaN` are falsy.
      *
      * @static
      * @memberOf _
@@ -85652,7 +85951,7 @@ function Writable(fn, options) {
 
       while (++index < length) {
         var pair = pairs[index];
-        result[pair[0]] = pair[1];
+        baseAssignValue(result, pair[0], pair[1]);
       }
       return result;
     }
@@ -92312,6 +92611,8 @@ function Writable(fn, options) {
      * **Note:** JavaScript follows the IEEE-754 standard for resolving
      * floating-point values which can produce unexpected results.
      *
+     * **Note:** If `lower` is greater than `upper`, the values are swapped.
+     *
      * @static
      * @memberOf _
      * @since 0.7.0
@@ -92325,8 +92626,15 @@ function Writable(fn, options) {
      * _.random(0, 5);
      * // => an integer between 0 and 5
      *
+     * // when lower is greater than upper the values are swapped
+     * _.random(5, 0);
+     * // => an integer between 0 and 5
+     *
      * _.random(5);
      * // => also an integer between 0 and 5
+     *
+     * _.random(-5);
+     * // => an integer between -5 and 0
      *
      * _.random(5, true);
      * // => a floating-point number between 0 and 5
@@ -92929,6 +93237,10 @@ function Writable(fn, options) {
      * properties may be accessed as free variables in the template. If a setting
      * object is given, it takes precedence over `_.templateSettings` values.
      *
+     * **Security:** `_.template` is insecure and should not be used. It will be
+     * removed in Lodash v5. Avoid untrusted input. See
+     * [threat model](https://github.com/lodash/lodash/blob/main/threat-model.md).
+     *
      * **Note:** In the development build `_.template` utilizes
      * [sourceURLs](http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/#toc-sourceurl)
      * for easier debugging.
@@ -93036,11 +93348,17 @@ function Writable(fn, options) {
         options = undefined;
       }
       string = toString(string);
-      options = assignInWith({}, options, settings, customDefaultsAssignIn);
+      options = assignWith({}, options, settings, customDefaultsAssignIn);
 
-      var imports = assignInWith({}, options.imports, settings.imports, customDefaultsAssignIn),
+      var imports = assignWith({}, options.imports, settings.imports, customDefaultsAssignIn),
           importsKeys = keys(imports),
           importsValues = baseValues(imports, importsKeys);
+
+      arrayEach(importsKeys, function(key) {
+        if (reForbiddenIdentifierChars.test(key)) {
+          throw new Error(INVALID_TEMPL_IMPORTS_ERROR_TEXT);
+        }
+      });
 
       var isEscaping,
           isEvaluating,
@@ -100989,7 +101307,8 @@ var percentTwenties = /%20/g;
 
 var Format = {
     RFC1738: 'RFC1738',
-    RFC3986: 'RFC3986'
+    RFC3986: 'RFC3986',
+    WHATWG: 'WHATWG'
 };
 
 module.exports = {
@@ -101000,10 +101319,14 @@ module.exports = {
         },
         RFC3986: function (value) {
             return String(value);
+        },
+        WHATWG: function (value) {
+            return replace.call(value, percentTwenties, '+');
         }
     },
     RFC1738: Format.RFC1738,
-    RFC3986: Format.RFC3986
+    RFC3986: Format.RFC3986,
+    WHATWG: Format.WHATWG
 };
 
 
@@ -101034,10 +101357,62 @@ module.exports = {
 "use strict";
 
 
+var getSideChannel = __nccwpck_require__(94753);
 var utils = __nccwpck_require__(25225);
 
 var has = Object.prototype.hasOwnProperty;
 var isArray = Array.isArray;
+var getPrototypeOf = Object.getPrototypeOf;
+var fromCharCode = String.fromCharCode;
+
+var isPlainContainer = function isPlainContainer(value) {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+    if (isArray(value)) {
+        return true;
+    }
+    var proto = getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+};
+
+var emptyCopyOf = function emptyCopyOf(value) {
+    if (isArray(value)) {
+        var arr = [];
+        arr.length = value.length;
+        return arr;
+    }
+    return getPrototypeOf(value) === null ? { __proto__: null } : {};
+};
+
+// `merge` and `compact` modify the containers they are given, so copy the caller's arrays and plain objects first
+var copyInput = function copyInput(input) {
+    var copies = getSideChannel();
+    var result = {};
+    var queue = [{ source: input, target: result }];
+
+    for (var i = 0; i < queue.length; ++i) {
+        var source = queue[i].source;
+        var target = queue[i].target;
+        var keys = Object.keys(source);
+        for (var j = 0; j < keys.length; ++j) {
+            var value = source[keys[j]];
+            // `target[key] =` would invoke the `__proto__` setter. `setProperty` stores that key as data.
+            if (isPlainContainer(value)) {
+                if (!copies.has(value)) {
+                    var copy = emptyCopyOf(value);
+                    copies.set(value, copy);
+                    queue[queue.length] = { source: value, target: copy };
+                }
+                utils.setProperty(target, keys[j], copies.get(value));
+            } else {
+                utils.setProperty(target, keys[j], value);
+            }
+        }
+    }
+
+    return result;
+};
 
 var defaults = {
     allowDots: false,
@@ -101066,16 +101441,37 @@ var defaults = {
 
 var interpretNumericEntities = function (str) {
     return str.replace(/&#(\d+);/g, function ($0, numberStr) {
-        return String.fromCharCode(parseInt(numberStr, 10));
+        var c = parseInt(numberStr, 10);
+        if (c > 0xFFFF && c <= 0x10FFFF) {
+            // `String.fromCodePoint` is not available in every supported engine, so build the surrogate pair by hand
+            c -= 0x10000;
+            return fromCharCode(0xD800 | (c >> 10), 0xDC00 | (c & 0x3FF));
+        }
+        return fromCharCode(c);
     });
 };
 
 var parseArrayValue = function (val, options, currentArrayLength) {
     if (val && typeof val === 'string' && options.comma && val.indexOf(',') > -1) {
+        if (options.throwOnLimitExceeded) {
+            var commaCount = 0;
+            var commaIndex = val.indexOf(',');
+            while (commaIndex > -1) {
+                commaCount += 1;
+                if (commaCount >= options.arrayLimit) {
+                    throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+                }
+                commaIndex = val.indexOf(',', commaIndex + 1);
+            }
+        }
         return val.split(',');
     }
 
-    if (options.throwOnLimitExceeded && currentArrayLength >= options.arrayLimit) {
+    if (
+        options.throwOnLimitExceeded
+        && currentArrayLength >= options.arrayLimit
+        && currentArrayLength > 0
+    ) {
         throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
     }
 
@@ -101101,10 +101497,10 @@ var parseValues = function parseQueryStringValues(str, options) {
     var limit = options.parameterLimit === Infinity ? void undefined : options.parameterLimit;
     var parts = cleanStr.split(
         options.delimiter,
-        options.throwOnLimitExceeded ? limit + 1 : limit
+        options.throwOnLimitExceeded && typeof limit !== 'undefined' ? limit + 1 : limit
     );
 
-    if (options.throwOnLimitExceeded && parts.length > limit) {
+    if (options.throwOnLimitExceeded && typeof limit !== 'undefined' && parts.length > limit) {
         throw new RangeError('Parameter limit exceeded. Only ' + limit + ' parameter' + (limit === 1 ? '' : 's') + ' allowed.');
     }
 
@@ -101135,6 +101531,9 @@ var parseValues = function parseQueryStringValues(str, options) {
         var bracketEqualsPos = part.indexOf(']=');
         var pos = bracketEqualsPos === -1 ? part.indexOf('=') : bracketEqualsPos + 1;
 
+        // `[]` belongs to the key, so look for it at the split point, not anywhere in the part
+        var isEmptyBracketKey = pos > 1 && part.slice(pos - 2, pos) === '[]';
+
         var key;
         var val;
         if (pos === -1) {
@@ -101148,7 +101547,7 @@ var parseValues = function parseQueryStringValues(str, options) {
                     parseArrayValue(
                         part.slice(pos + 1),
                         options,
-                        isArray(obj[key]) ? obj[key].length : 0
+                        isArray(obj[key]) && (options.duplicates === 'combine' || isEmptyBracketKey) ? obj[key].length : 0
                     ),
                     function (encodedVal) {
                         return options.decoder(encodedVal, defaults.decoder, charset, 'value');
@@ -101158,28 +101557,28 @@ var parseValues = function parseQueryStringValues(str, options) {
         }
 
         if (val && options.interpretNumericEntities && charset === 'iso-8859-1') {
-            val = interpretNumericEntities(String(val));
+            val = utils.maybeMap(val, function (value) {
+                return value ? interpretNumericEntities(String(value)) : value;
+            });
         }
 
-        if (part.indexOf('[]=') > -1) {
+        if (isEmptyBracketKey) {
             val = isArray(val) ? [val] : val;
         }
 
         if (options.comma && isArray(val) && val.length > options.arrayLimit) {
-            if (options.throwOnLimitExceeded) {
-                throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
-            }
-            val = utils.combine([], val, options.arrayLimit, options.plainObjects);
+            val = utils.combine([], val, options.arrayLimit, options.plainObjects, options.throwOnLimitExceeded);
         }
 
         if (key !== null) {
             var existing = has.call(obj, key);
-            if (existing && (options.duplicates === 'combine' || part.indexOf('[]=') > -1)) {
+            if (existing && (options.duplicates === 'combine' || isEmptyBracketKey)) {
                 obj[key] = utils.combine(
                     obj[key],
                     val,
                     options.arrayLimit,
-                    options.plainObjects
+                    options.plainObjects,
+                    options.throwOnLimitExceeded
                 );
             } else if (!existing || options.duplicates === 'last') {
                 obj[key] = val;
@@ -101188,6 +101587,10 @@ var parseValues = function parseQueryStringValues(str, options) {
     }
 
     return obj;
+};
+
+var stripWrappingBrackets = function stripWrappingBrackets(key) {
+    return key.charAt(0) === '[' && key.charAt(key.length - 1) === ']' ? key.slice(1, -1) : key;
 };
 
 var parseObject = function (chain, val, options, valuesParsed) {
@@ -101214,13 +101617,14 @@ var parseObject = function (chain, val, options, valuesParsed) {
                         [],
                         leaf,
                         options.arrayLimit,
-                        options.plainObjects
+                        options.plainObjects,
+                        options.throwOnLimitExceeded
                     );
             }
         } else {
             obj = options.plainObjects ? { __proto__: null } : {};
-            var cleanRoot = root.charAt(0) === '[' && root.charAt(root.length - 1) === ']' ? root.slice(1, -1) : root;
-            var decodedRoot = options.decodeDotInKeys ? cleanRoot.replace(/%2E/g, '.') : cleanRoot;
+            var cleanRoot = stripWrappingBrackets(root);
+            var decodedRoot = options.decodeDotInKeys ? cleanRoot.replace(/%2E/gi, '.') : cleanRoot;
             var index = parseInt(decodedRoot, 10);
             var isValidArrayIndex = !isNaN(index)
                 && root !== decodedRoot
@@ -101228,7 +101632,7 @@ var parseObject = function (chain, val, options, valuesParsed) {
                 && index >= 0
                 && options.parseArrays;
             if (!options.parseArrays && decodedRoot === '') {
-                obj = { 0: leaf };
+                obj[0] = leaf;
             } else if (isValidArrayIndex && index < options.arrayLimit) {
                 obj = [];
                 obj[index] = leaf;
@@ -101248,11 +101652,52 @@ var parseObject = function (chain, val, options, valuesParsed) {
     return leaf;
 };
 
-var splitKeyIntoSegments = function splitKeyIntoSegments(givenKey, options) {
-    var key = options.allowDots ? givenKey.replace(/\.([^.[]+)/g, '[$1]') : givenKey;
+// Behaves like `key.replace(/\.([^.[]+)/g, '[$1]')`, but only rewrites a dot
+// that sits at bracket depth 0. A literal dot already inside a `[...]` segment
+// is left untouched instead of corrupting the key (e.g. "outer[a.b]"). (#617)
+var topLevelDotsToBrackets = function topLevelDotsToBrackets(key) {
+    var result = '';
+    var depth = 0;
+    for (var i = 0; i < key.length; i += 1) {
+        var cu = key.charCodeAt(i);
+        if (cu === 0x5B) { // '['
+            depth += 1;
+            result += '[';
+        } else if (cu === 0x5D) { // ']'
+            if (depth > 0) {
+                depth -= 1;
+            }
+            result += ']';
+        } else if (
+            cu === 0x2E // '.'
+            && depth === 0
+            && i + 1 < key.length
+            && key.charCodeAt(i + 1) !== 0x2E // not another '.'
+            && key.charCodeAt(i + 1) !== 0x5B // not '['
+        ) {
+            var start = i + 1;
+            var j = start;
+            while (j < key.length && key.charCodeAt(j) !== 0x2E && key.charCodeAt(j) !== 0x5B) {
+                j += 1;
+            }
+            result += '[' + key.slice(start, j) + ']';
+            i = j - 1;
+        } else {
+            result += key.charAt(i);
+        }
+    }
+    return result;
+};
 
+// Split a key like "a[b][c[]]" into ['a', '[b]', '[c[]]'] while preserving
+// qs parse semantics for depth/prototype guards.
+var splitKeyIntoSegments = function splitKeyIntoSegments(originalKey, options) {
+    var key = options.allowDots ? topLevelDotsToBrackets(originalKey) : originalKey;
+
+    // depth <= 0 keeps the whole key as one segment
     if (options.depth <= 0) {
-        if (!options.plainObjects && has.call(Object.prototype, key)) {
+        // `parseObject` strips one wrapping bracket pair, so guard the key it will store ("[toString]" -> "toString")
+        if (!options.plainObjects && has.call(Object.prototype, stripWrappingBrackets(key))) {
             if (!options.allowPrototypes) {
                 return;
             }
@@ -101261,14 +101706,11 @@ var splitKeyIntoSegments = function splitKeyIntoSegments(givenKey, options) {
         return [key];
     }
 
-    var brackets = /(\[[^[\]]*])/;
-    var child = /(\[[^[\]]*])/g;
+    var segments = [];
 
-    var segment = brackets.exec(key);
-    var parent = segment ? key.slice(0, segment.index) : key;
-
-    var keys = [];
-
+    // parent before the first '[' (may be empty if key starts with '[')
+    var first = key.indexOf('[');
+    var parent = first >= 0 ? key.slice(0, first) : key;
     if (parent) {
         if (!options.plainObjects && has.call(Object.prototype, parent)) {
             if (!options.allowPrototypes) {
@@ -101276,32 +101718,62 @@ var splitKeyIntoSegments = function splitKeyIntoSegments(givenKey, options) {
             }
         }
 
-        keys[keys.length] = parent;
+        segments[segments.length] = parent;
     }
 
-    var i = 0;
-    while ((segment = child.exec(key)) !== null && i < options.depth) {
-        i += 1;
+    var n = key.length;
+    var open = first;
+    var collected = 0;
 
-        var segmentContent = segment[1].slice(1, -1);
-        if (!options.plainObjects && has.call(Object.prototype, segmentContent)) {
-            if (!options.allowPrototypes) {
-                return;
+    while (open >= 0 && collected < options.depth) {
+        var level = 1;
+        var i = open + 1;
+        var close = -1;
+
+        // balance nested '[' and ']' inside this bracket group using a nesting level counter
+        while (i < n && close < 0) {
+            var cu = key.charCodeAt(i);
+            if (cu === 0x5B) { // '['
+                level += 1;
+            } else if (cu === 0x5D) { // ']'
+                level -= 1;
+                if (level === 0) {
+                    close = i; // found matching close; loop will exit by condition
+                }
             }
+            i += 1;
         }
 
-        keys[keys.length] = segment[1];
+        if (close < 0) {
+            // Unterminated group: wrap the raw remainder in one bracket pair so it stays
+            // a single literal segment (e.g. "[[]b" -> "[[]b]"); we do not infer missing ']'.
+            segments[segments.length] = '[' + key.slice(open) + ']';
+            return segments;
+        }
+
+        var seg = key.slice(open, close + 1);
+        // prototype guard for the content of this group
+        var content = seg.slice(1, -1);
+        if (!options.plainObjects && has.call(Object.prototype, content) && !options.allowPrototypes) {
+            return;
+        }
+
+        segments[segments.length] = seg;
+        collected += 1;
+
+        // find the next '[' after this balanced group
+        open = key.indexOf('[', close + 1);
     }
 
-    if (segment) {
+    if (open >= 0) {
         if (options.strictDepth === true) {
             throw new RangeError('Input depth exceeded depth option of ' + options.depth + ' and strictDepth is true');
         }
 
-        keys[keys.length] = '[' + key.slice(segment.index) + ']';
+        segments[segments.length] = '[' + key.slice(open) + ']';
     }
 
-    return keys;
+    return segments;
 };
 
 var parseKeys = function parseQueryStringKeys(givenKey, val, options, valuesParsed) {
@@ -101387,7 +101859,7 @@ module.exports = function (str, opts) {
         return options.plainObjects ? { __proto__: null } : {};
     }
 
-    var tempObj = typeof str === 'string' ? parseValues(str, options) : str;
+    var tempObj = typeof str === 'string' ? parseValues(str, options) : copyInput(str);
     var obj = options.plainObjects ? { __proto__: null } : {};
 
     // Iterate over the keys and setup the new object
@@ -101451,6 +101923,7 @@ var defaults = {
     charsetSentinel: false,
     commaRoundTrip: false,
     delimiter: '&',
+    depth: Infinity,
     encode: true,
     encodeDotInKeys: false,
     encoder: utils.encode,
@@ -101495,9 +101968,15 @@ var stringify = function stringify(
     formatter,
     encodeValuesOnly,
     charset,
-    sideChannel
+    sideChannel,
+    depth,
+    currentDepth
 ) {
     var obj = object;
+
+    if (currentDepth > depth) {
+        throw new RangeError('Input depth exceeded depth option of ' + depth);
+    }
 
     var tmpSc = sideChannel;
     var step = 0;
@@ -101518,9 +101997,9 @@ var stringify = function stringify(
         }
     }
 
-    if (typeof filter === 'function') {
-        obj = filter(prefix, obj);
-    } else if (obj instanceof Date) {
+    obj = typeof filter === 'function' ? filter(prefix, obj) : obj;
+
+    if (obj instanceof Date) {
         obj = serializeDate(obj);
     } else if (generateArrayPrefix === 'comma' && isArray(obj)) {
         obj = utils.maybeMap(obj, function (value) {
@@ -101533,7 +102012,7 @@ var stringify = function stringify(
 
     if (obj === null) {
         if (strictNullHandling) {
-            return encoder && !encodeValuesOnly ? encoder(prefix, defaults.encoder, charset, 'key', format) : prefix;
+            return formatter(encoder && !encodeValuesOnly ? encoder(prefix, defaults.encoder, charset, 'key', format) : prefix);
         }
 
         obj = '';
@@ -101557,9 +102036,11 @@ var stringify = function stringify(
     if (generateArrayPrefix === 'comma' && isArray(obj)) {
         // we need to join elements in
         if (encodeValuesOnly && encoder) {
-            obj = utils.maybeMap(obj, encoder);
+            obj = utils.maybeMap(obj, function (v) {
+                return v == null ? v : encoder(v, defaults.encoder, charset, 'value', format);
+            });
         }
-        objKeys = [{ value: obj.length > 0 ? obj.join(',') || null : void undefined }];
+        objKeys = [{ value: obj.length > 0 ? utils.toCoercible(obj).join(',') || null : void undefined }];
     } else if (isArray(filter)) {
         objKeys = filter;
     } else {
@@ -101567,12 +102048,12 @@ var stringify = function stringify(
         objKeys = sort ? keys.sort(sort) : keys;
     }
 
-    var encodedPrefix = encodeDotInKeys ? String(prefix).replace(/\./g, '%2E') : String(prefix);
+    var encodedPrefix = String(prefix);
 
     var adjustedPrefix = commaRoundTrip && isArray(obj) && obj.length === 1 ? encodedPrefix + '[]' : encodedPrefix;
 
-    if (allowEmptyArrays && isArray(obj) && obj.length === 0) {
-        return adjustedPrefix + '[]';
+    if (allowEmptyArrays && isArray(obj) && obj.length === 0 && Object.keys(obj).length === 0) {
+        return formatter(encoder && !encodeValuesOnly ? encoder(adjustedPrefix, defaults.encoder, charset, 'key', format) : adjustedPrefix) + '[]';
     }
 
     for (var j = 0; j < objKeys.length; ++j) {
@@ -101611,7 +102092,9 @@ var stringify = function stringify(
             formatter,
             encodeValuesOnly,
             charset,
-            valueSideChannel
+            valueSideChannel,
+            depth,
+            currentDepth + 1
         ));
     }
 
@@ -101655,7 +102138,7 @@ var normalizeStringifyOptions = function normalizeStringifyOptions(opts) {
     }
 
     var arrayFormat;
-    if (opts.arrayFormat in arrayPrefixGenerators) {
+    if (has.call(arrayPrefixGenerators, opts.arrayFormat)) {
         arrayFormat = opts.arrayFormat;
     } else if ('indices' in opts) {
         arrayFormat = opts.indices ? 'indices' : 'repeat';
@@ -101678,6 +102161,7 @@ var normalizeStringifyOptions = function normalizeStringifyOptions(opts) {
         charsetSentinel: typeof opts.charsetSentinel === 'boolean' ? opts.charsetSentinel : defaults.charsetSentinel,
         commaRoundTrip: !!opts.commaRoundTrip,
         delimiter: typeof opts.delimiter === 'undefined' ? defaults.delimiter : opts.delimiter,
+        depth: typeof opts.depth === 'number' ? opts.depth : defaults.depth,
         encode: typeof opts.encode === 'boolean' ? opts.encode : defaults.encode,
         encodeDotInKeys: typeof opts.encodeDotInKeys === 'boolean' ? opts.encodeDotInKeys : defaults.encodeDotInKeys,
         encoder: typeof opts.encoder === 'function' ? opts.encoder : defaults.encoder,
@@ -101703,7 +102187,9 @@ module.exports = function (object, opts) {
         filter = options.filter;
         obj = filter('', obj);
     } else if (isArray(options.filter)) {
-        filter = options.filter;
+        // a copy: `sort` below must not reorder the caller's array, and nested
+        // levels take their key order from the sorted copy
+        filter = options.filter.slice();
         objKeys = filter;
     }
 
@@ -101727,14 +102213,22 @@ module.exports = function (object, opts) {
     var sideChannel = getSideChannel();
     for (var i = 0; i < objKeys.length; ++i) {
         var key = objKeys[i];
+
+        if (typeof key === 'undefined' || key === null) {
+            continue;
+        }
+
         var value = obj[key];
 
         if (options.skipNulls && value === null) {
             continue;
         }
+
+        var encodedKey = options.encodeDotInKeys ? String(key).replace(/\./g, '%2E') : String(key);
+
         pushToArray(keys, stringify(
             value,
-            key,
+            encodedKey,
             generateArrayPrefix,
             commaRoundTrip,
             options.allowEmptyArrays,
@@ -101742,7 +102236,7 @@ module.exports = function (object, opts) {
             options.skipNulls,
             options.encodeDotInKeys,
             options.encode ? options.encoder : null,
-            options.filter,
+            filter,
             options.sort,
             options.allowDots,
             options.serializeDate,
@@ -101750,7 +102244,9 @@ module.exports = function (object, opts) {
             options.formatter,
             options.encodeValuesOnly,
             options.charset,
-            sideChannel
+            sideChannel,
+            options.depth,
+            0
         ));
     }
 
@@ -101760,10 +102256,10 @@ module.exports = function (object, opts) {
     if (options.charsetSentinel) {
         if (options.charset === 'iso-8859-1') {
             // encodeURIComponent('&#10003;'), the "numeric entity" representation of a checkmark
-            prefix += 'utf8=%26%2310003%3B&';
+            prefix += 'utf8=%26%2310003%3B' + options.delimiter;
         } else {
             // encodeURIComponent('✓')
-            prefix += 'utf8=%E2%9C%93&';
+            prefix += 'utf8=%E2%9C%93' + options.delimiter;
         }
     }
 
@@ -101781,6 +102277,7 @@ module.exports = function (object, opts) {
 
 var formats = __nccwpck_require__(86032);
 var getSideChannel = __nccwpck_require__(94753);
+var defineProperty = __nccwpck_require__(79094);
 
 var has = Object.prototype.hasOwnProperty;
 var isArray = Array.isArray;
@@ -101804,6 +102301,23 @@ var getMaxIndex = function getMaxIndex(obj) {
 
 var setMaxIndex = function setMaxIndex(obj, maxIndex) {
     overflowChannel.set(obj, maxIndex);
+};
+
+// Track containers produced by a `strictMerge` conflict wrap, and their current max numeric index,
+// so repeated conflicts on one path append instead of nesting a new wrapper each time
+var conflictChannel = getSideChannel();
+
+var markConflict = function markConflict(obj, maxIndex) {
+    conflictChannel.set(obj, maxIndex);
+    return obj;
+};
+
+var isConflict = function isConflict(obj) {
+    return conflictChannel.has(obj);
+};
+
+var getConflictIndex = function getConflictIndex(obj) {
+    return conflictChannel.get(obj);
 };
 
 var hexTable = (function () {
@@ -101845,6 +102359,54 @@ var arrayToObject = function arrayToObject(source, options) {
     return obj;
 };
 
+var setProperty = function setProperty(obj, key, value) {
+    if (key === '__proto__' && defineProperty) {
+        defineProperty(obj, key, {
+            configurable: true,
+            enumerable: true,
+            value: value,
+            writable: true
+        });
+    } else {
+        obj[key] = value;
+    }
+};
+
+var maxNumericIndex = function maxNumericIndex(obj, min) {
+    var max = min;
+    var keys = Object.keys(obj);
+    for (var i = 0; i < keys.length; ++i) {
+        var num = parseInt(keys[i], 10);
+        if (String(num) === keys[i] && num > max) {
+            max = num;
+        }
+    }
+
+    return max;
+};
+
+// parsed arrays stay sparse until `compact`, so `length` would count the holes left by indices like `a[19]`
+var countElements = function countElements(arr) {
+    var count = 0;
+    for (var i = 0; i < arr.length; ++i) {
+        if (has.call(arr, i)) {
+            count += 1;
+        }
+    }
+    return count;
+};
+
+var limitedPair = function limitedPair(first, second, options) {
+    var pair = [first, second];
+    if (options && typeof options.arrayLimit === 'number' && pair.length > options.arrayLimit) {
+        if (options.throwOnLimitExceeded) {
+            throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+        }
+        return markOverflow(arrayToObject(pair, options), 1);
+    }
+    return pair;
+};
+
 var merge = function merge(target, source, options) {
     /* eslint no-param-reassign: 0 */
     if (!source) {
@@ -101854,7 +102416,10 @@ var merge = function merge(target, source, options) {
     if (typeof source !== 'object' && typeof source !== 'function') {
         if (isArray(target)) {
             var nextIndex = target.length;
-            if (options && typeof options.arrayLimit === 'number' && nextIndex > options.arrayLimit) {
+            if (options && typeof options.arrayLimit === 'number' && countElements(target) >= options.arrayLimit) {
+                if (options.throwOnLimitExceeded) {
+                    throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+                }
                 return markOverflow(arrayToObject(target.concat(source), options), nextIndex);
             }
             target[nextIndex] = source;
@@ -101864,8 +102429,20 @@ var merge = function merge(target, source, options) {
                 var newIndex = getMaxIndex(target) + 1;
                 target[newIndex] = source;
                 setMaxIndex(target, newIndex);
+            } else if (options && options.strictMerge && isConflict(target)) {
+                var nextConflict = getConflictIndex(target) + 1;
+                if (
+                    options.throwOnLimitExceeded
+                    && typeof options.arrayLimit === 'number'
+                    && nextConflict >= options.arrayLimit
+                ) {
+                    throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+                }
+                target[nextConflict] = source;
+                markConflict(target, nextConflict);
             } else if (options && options.strictMerge) {
-                return [target, source];
+                var conflict = limitedPair(target, source, options);
+                return isArray(conflict) ? markConflict(conflict, 1) : conflict;
             } else if (
                 (options && (options.plainObjects || options.allowPrototypes))
                 || !has.call(Object.prototype, source)
@@ -101873,7 +102450,7 @@ var merge = function merge(target, source, options) {
                 target[source] = true;
             }
         } else {
-            return [target, source];
+            return limitedPair(target, source, options);
         }
 
         return target;
@@ -101894,6 +102471,9 @@ var merge = function merge(target, source, options) {
         }
         var combined = [target].concat(source);
         if (options && typeof options.arrayLimit === 'number' && combined.length > options.arrayLimit) {
+            if (options.throwOnLimitExceeded) {
+                throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+            }
             return markOverflow(arrayToObject(combined, options), combined.length - 1);
         }
         return combined;
@@ -101902,6 +102482,10 @@ var merge = function merge(target, source, options) {
     var mergeTarget = target;
     if (isArray(target) && !isArray(source)) {
         mergeTarget = arrayToObject(target, options);
+        if (isConflict(target)) {
+            // the array may have grown past its last conflict, so continue after its last index
+            markConflict(mergeTarget, target.length - 1);
+        }
     }
 
     if (isArray(target) && isArray(source)) {
@@ -101917,6 +102501,12 @@ var merge = function merge(target, source, options) {
                 target[i] = item;
             }
         });
+        if (options && typeof options.arrayLimit === 'number' && countElements(target) > options.arrayLimit) {
+            if (options.throwOnLimitExceeded) {
+                throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+            }
+            return markOverflow(arrayToObject(target, options), target.length - 1);
+        }
         return target;
     }
 
@@ -101924,18 +102514,24 @@ var merge = function merge(target, source, options) {
         var value = source[key];
 
         if (has.call(acc, key)) {
-            acc[key] = merge(acc[key], value, options);
+            setProperty(acc, key, merge(acc[key], value, options));
         } else {
-            acc[key] = value;
+            setProperty(acc, key, value);
         }
 
         if (isOverflow(source) && !isOverflow(acc)) {
-            markOverflow(acc, getMaxIndex(source));
+            markOverflow(acc, maxNumericIndex(acc, getMaxIndex(source)));
         }
         if (isOverflow(acc)) {
             var keyNum = parseInt(key, 10);
             if (String(keyNum) === key && keyNum >= 0 && keyNum > getMaxIndex(acc)) {
                 setMaxIndex(acc, keyNum);
+            }
+        }
+        if (isConflict(acc)) {
+            var conflictKey = parseInt(key, 10);
+            if (String(conflictKey) === key && conflictKey > getConflictIndex(acc)) {
+                markConflict(acc, conflictKey);
             }
         }
 
@@ -101945,12 +102541,19 @@ var merge = function merge(target, source, options) {
 
 var assign = function assignSingleSource(target, source) {
     return Object.keys(source).reduce(function (acc, key) {
-        acc[key] = source[key];
+        setProperty(acc, key, source[key]);
         return acc;
     }, target);
 };
 
 var decode = function (str, defaultDecoder, charset) {
+    // With no `%` there is no escape to expand, in either charset: `unescape` has
+    // nothing to match, and `decodeURIComponent` is the identity on such a string
+    // (and cannot throw). So only `+` -> ' ' remains, and often not even that.
+    if (typeof str === 'string' && str.indexOf('%') === -1) {
+        return str.indexOf('+') === -1 ? str : str.replace(/\+/g, ' ');
+    }
+
     var strWithoutPlus = str.replace(/\+/g, ' ');
     if (charset === 'iso-8859-1') {
         // unescape never throws, no try...catch needed:
@@ -101962,6 +102565,57 @@ var decode = function (str, defaultDecoder, charset) {
     } catch (e) {
         return strWithoutPlus;
     }
+};
+
+var hasToPrimitive = typeof Symbol === 'function' && typeof Symbol.toPrimitive === 'symbol';
+var arrayJoin = Array.prototype.join;
+var arrayToString = Array.prototype.toString;
+var objectToString = Object.prototype.toString;
+
+// an object with no callable toString (eg, from JSON, or null-prototype) would make String() or join() throw,
+// so it becomes its primitive valueOf or else Object.prototype.toString; arrays are walked like join walks them,
+// copied only once an element changes, with an array already being joined becoming '' as engines do for cycles
+var toCoercible = function toCoercible(value, joining) {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) {
+        return value;
+    }
+    if (hasToPrimitive && value[Symbol.toPrimitive] != null) {
+        return value;
+    }
+    if (isArray(value) && value.toString === arrayToString && value.join === arrayJoin) {
+        var ancestors = joining || getSideChannel();
+        if (ancestors.has(value)) {
+            return '';
+        }
+        ancestors.set(value, true);
+        var copy;
+        for (var i = 0; i < value.length; i += 1) {
+            var item = value[i];
+            var coerced = toCoercible(item, ancestors);
+            if (!copy && coerced !== item) {
+                copy = [];
+                for (var j = 0; j < i; j += 1) {
+                    copy[j] = value[j];
+                }
+            }
+            if (copy) {
+                copy[i] = coerced;
+            }
+        }
+        ancestors['delete'](value);
+        return copy || value;
+    }
+    if (typeof value.toString === 'function') {
+        return value;
+    }
+    var valueOf = value.valueOf;
+    if (typeof valueOf === 'function') {
+        var primitive = valueOf.call(value);
+        if (!primitive || (typeof primitive !== 'object' && typeof primitive !== 'function')) {
+            return String(primitive);
+        }
+    }
+    return objectToString.call(value);
 };
 
 var limit = 1024;
@@ -101979,18 +102633,27 @@ var encode = function encode(str, defaultEncoder, charset, kind, format) {
     if (typeof str === 'symbol') {
         string = Symbol.prototype.toString.call(str);
     } else if (typeof str !== 'string') {
-        string = String(str);
+        string = String(toCoercible(str));
     }
 
     if (charset === 'iso-8859-1') {
+        // `escape` leaves `+` untouched, but a literal `+` is decoded back to a space,
+        // so it must be percent-encoded to round-trip (the utf-8 path already does this).
         return escape(string).replace(/%u[0-9a-f]{4}/gi, function ($0) {
             return '%26%23' + parseInt($0.slice(2), 16) + '%3B';
-        });
+        }).replace(/\+/g, '%2B');
     }
 
     var out = '';
     for (var j = 0; j < string.length; j += limit) {
         var segment = string.length >= limit ? string.slice(j, j + limit) : string;
+        if (j + limit < string.length) {
+            var last = segment.charCodeAt(segment.length - 1);
+            if (last >= 0xD800 && last <= 0xDBFF) {
+                segment = segment.slice(0, -1);
+                j -= 1;
+            }
+        }
         var arr = [];
 
         for (var i = 0; i < segment.length; ++i) {
@@ -101999,11 +102662,12 @@ var encode = function encode(str, defaultEncoder, charset, kind, format) {
                 c === 0x2D // -
                 || c === 0x2E // .
                 || c === 0x5F // _
-                || c === 0x7E // ~
+                || (c === 0x7E && format !== formats.WHATWG) // ~
                 || (c >= 0x30 && c <= 0x39) // 0-9
                 || (c >= 0x41 && c <= 0x5A) // a-z
                 || (c >= 0x61 && c <= 0x7A) // A-Z
                 || (format === formats.RFC1738 && (c === 0x28 || c === 0x29)) // ( )
+                || (format === formats.WHATWG && c === 0x2A) // *
             ) {
                 arr[arr.length] = segment.charAt(i);
                 continue;
@@ -102027,13 +102691,19 @@ var encode = function encode(str, defaultEncoder, charset, kind, format) {
                 continue;
             }
 
-            i += 1;
-            c = 0x10000 + (((c & 0x3FF) << 10) | (segment.charCodeAt(i) & 0x3FF));
+            var next = segment.charCodeAt(i + 1);
+            if (c <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) {
+                i += 1;
+                c = 0x10000 + (((c & 0x3FF) << 10) | (next & 0x3FF));
 
-            arr[arr.length] = hexTable[0xF0 | (c >> 18)]
-                + hexTable[0x80 | ((c >> 12) & 0x3F)]
-                + hexTable[0x80 | ((c >> 6) & 0x3F)]
-                + hexTable[0x80 | (c & 0x3F)];
+                arr[arr.length] = hexTable[0xF0 | (c >> 18)]
+                    + hexTable[0x80 | ((c >> 12) & 0x3F)]
+                    + hexTable[0x80 | ((c >> 6) & 0x3F)]
+                    + hexTable[0x80 | (c & 0x3F)];
+            } else {
+                // a lone surrogate has no UTF-8 encoding; like `URLSearchParams` and `TextEncoder`, emit U+FFFD
+                arr[arr.length] = '%EF%BF%BD';
+            }
         }
 
         out += arr.join('');
@@ -102044,7 +102714,7 @@ var encode = function encode(str, defaultEncoder, charset, kind, format) {
 
 var compact = function compact(value) {
     var queue = [{ obj: { o: value }, prop: 'o' }];
-    var refs = [];
+    var refs = getSideChannel();
 
     for (var i = 0; i < queue.length; ++i) {
         var item = queue[i];
@@ -102054,9 +102724,9 @@ var compact = function compact(value) {
         for (var j = 0; j < keys.length; ++j) {
             var key = keys[j];
             var val = obj[key];
-            if (typeof val === 'object' && val !== null && refs.indexOf(val) === -1) {
+            if (typeof val === 'object' && val !== null && !refs.has(val)) {
                 queue[queue.length] = { obj: obj, prop: key };
-                refs[refs.length] = val;
+                refs.set(val, true);
             }
         }
     }
@@ -102075,20 +102745,33 @@ var isBuffer = function isBuffer(obj) {
         return false;
     }
 
-    return !!(obj.constructor && obj.constructor.isBuffer && obj.constructor.isBuffer(obj));
+    return !!(obj.constructor && typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj));
 };
 
-var combine = function combine(a, b, arrayLimit, plainObjects) {
+var combine = function combine(a, b, arrayLimit, plainObjects, throwOnLimitExceeded) {
     // If 'a' is already an overflow object, add to it
     if (isOverflow(a)) {
-        var newIndex = getMaxIndex(a) + 1;
-        a[newIndex] = b;
+        if (throwOnLimitExceeded) {
+            throw new RangeError('Array limit exceeded. Only ' + arrayLimit + ' element' + (arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+        }
+        // spread `b` one level, matching the `[].concat(a, b)` used below, so a
+        // collection appended to an already-overflowed object is flattened
+        // rather than nested under a single index
+        var bValues = isArray(b) ? b : [b];
+        var newIndex = getMaxIndex(a);
+        for (var i = 0; i < bValues.length; ++i) {
+            newIndex += 1;
+            a[newIndex] = bValues[i];
+        }
         setMaxIndex(a, newIndex);
         return a;
     }
 
     var result = [].concat(a, b);
     if (result.length > arrayLimit) {
+        if (throwOnLimitExceeded) {
+            throw new RangeError('Array limit exceeded. Only ' + arrayLimit + ' element' + (arrayLimit === 1 ? '' : 's') + ' allowed in an array.');
+        }
         return markOverflow(arrayToObject(result, { plainObjects: plainObjects }), result.length - 1);
     }
     return result;
@@ -102117,7 +102800,9 @@ module.exports = {
     isRegExp: isRegExp,
     markOverflow: markOverflow,
     maybeMap: maybeMap,
-    merge: merge
+    merge: merge,
+    setProperty: setProperty,
+    toCoercible: toCoercible
 };
 
 
@@ -108880,9 +109565,8 @@ module.exports = function getSideChannelList() {
 			}
 		},
 		'delete': function (key) {
-			var root = $o && $o.next;
 			var deletedNode = listDelete($o, key);
-			if (deletedNode && root && root === deletedNode) {
+			if (deletedNode && $o && !$o.next) {
 				$o = void undefined;
 			}
 			return !!deletedNode;
@@ -108904,7 +109588,6 @@ module.exports = function getSideChannelList() {
 			listSet(/** @type {NonNullable<typeof $o>} */ ($o), key, value);
 		}
 	};
-	// @ts-expect-error TODO: figure out why this is erroring
 	return channel;
 };
 
@@ -109103,7 +109786,10 @@ module.exports = function getSideChannel() {
 	var channel = {
 		assert: function (key) {
 			if (!channel.has(key)) {
-				throw new $TypeError('Side channel does not contain ' + inspect(key));
+				var keyDesc = key && Object(key) === key
+					? 'the given object key'
+					: inspect(key);
+				throw new $TypeError('Side channel does not contain ' + keyDesc);
 			}
 		},
 		'delete': function (key) {
@@ -109123,7 +109809,7 @@ module.exports = function getSideChannel() {
 			$channelData.set(key, value);
 		}
 	};
-	// @ts-expect-error TODO: figure out why this is erroring
+
 	return channel;
 };
 
